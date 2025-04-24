@@ -11,17 +11,38 @@ const EmulatorHeader: React.FC = () => {
       duration: 2000,
     });
     
-    // Simulate checking system requirements
+    // Simulate checking system requirements and creating game directory
     setTimeout(() => {
-      toast.success('Download starting!', {
-        description: 'RetroNexus-Win11-Complete.zip (475MB)\nIncludes: Emulator, BIOS, DirectX, and required runtime files',
+      // Simulate creating game directory
+      toast.info('Creating game directory...', {
+        description: 'Setting up C:\\RetroNexus\\Games'
       });
       
-      // Trigger file download simulation
-      const link = document.createElement('a');
-      link.href = '#'; // In a real implementation, this would be the actual download URL
-      link.download = 'RetroNexus-Win11-Complete.zip';
-      link.click();
+      setTimeout(() => {
+        toast.success('Download starting!', {
+          description: 'RetroNexus-Win11-Complete.zip (475MB)\nIncludes: Emulator, BIOS, DirectX, and required runtime files',
+        });
+        
+        // Simulate scanning for games
+        setTimeout(() => {
+          toast.info('Scanning for games...', {
+            description: 'Checking C:\\RetroNexus\\Games for compatible files'
+          });
+          
+          // Simulate finding games
+          setTimeout(() => {
+            toast.success('Game scan complete!', {
+              description: 'Found pre-installed games in C:\\RetroNexus\\Games'
+            });
+          }, 1500);
+        }, 1000);
+        
+        // Trigger file download simulation
+        const link = document.createElement('a');
+        link.href = '#'; // In a real implementation, this would be the actual download URL
+        link.download = 'RetroNexus-Win11-Complete.zip';
+        link.click();
+      }, 1500);
     }, 2000);
   };
 
@@ -64,6 +85,7 @@ const EmulatorHeader: React.FC = () => {
           <p>Memory: OK</p>
           <p>DirectX Runtime: Found</p>
           <p>Game Directory: C:\RetroNexus\Games</p>
+          <p>Scanning Games Directory...</p>
           <p>BIOS Files: Bundled</p>
           <p className="mt-4 text-green-400">All components verified. Loading emulator...</p>
           <p className="animate-pulse text-sm mt-4">Press any key to continue...</p>
