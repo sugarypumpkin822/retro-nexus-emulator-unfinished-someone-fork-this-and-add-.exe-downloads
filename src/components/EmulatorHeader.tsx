@@ -37,11 +37,45 @@ const EmulatorHeader: React.FC = () => {
           }, 1500);
         }, 1000);
         
-        // Trigger file download simulation
+        // Create a valid downloadable file instead of an empty link
+        // Generate a simple text file with installation instructions
+        const installText = `
+RetroNexus Emulator - Installation Instructions
+==============================================
+
+Thank you for downloading RetroNexus Emulator!
+
+Installation Steps:
+1. Extract all files to a location of your choice
+2. Run RetroNexus.exe to start the emulator
+3. ROMs will be scanned from C:\\RetroNexus\\Games
+4. Enjoy your retro gaming experience!
+
+System Requirements:
+- Windows 7, 8, 10, or 11
+- 4GB RAM (8GB recommended)
+- DirectX 11 compatible graphics card
+- 2GB free disk space
+
+For support, visit: https://retronexus.example.com
+        `;
+        
+        // Create a blob with the text file content
+        const blob = new Blob([installText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create a download link and trigger it
         const link = document.createElement('a');
-        link.href = '#'; // In a real implementation, this would be the actual download URL
-        link.download = 'RetroNexus-Win11-Complete.zip';
+        link.href = url;
+        link.download = 'RetroNexus-Win11-Complete.txt';
+        document.body.appendChild(link);
         link.click();
+        
+        // Clean up
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          document.body.removeChild(link);
+        }, 100);
       }, 1500);
     }, 2000);
   };
