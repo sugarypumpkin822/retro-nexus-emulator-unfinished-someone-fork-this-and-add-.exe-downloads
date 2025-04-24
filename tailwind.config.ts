@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,20 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Custom emulator theme colors
+				emulator: {
+					"bg-dark": "#0B0E14",
+					"accent": "#00F0FF",
+					"accent-secondary": "#FF00E5",
+					"text-primary": "#E0E0FF",
+					"text-secondary": "#8A8AA3",
+					"card-bg": "#151824",
+					"highlight": "#2E3043",
+					"button": "#2A2D3E",
+					"success": "#00FF9D",
+					"warning": "#FFB800",
+					"error": "#FF3D57"
 				}
 			},
 			borderRadius: {
@@ -84,11 +99,34 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-glow': {
+					'0%, 100%': { 
+						boxShadow: '0 0 10px 2px rgba(0, 240, 255, 0.3), 0 0 15px 5px rgba(0, 240, 255, 0.1)'
+					},
+					'50%': { 
+						boxShadow: '0 0 15px 4px rgba(0, 240, 255, 0.5), 0 0 20px 8px rgba(0, 240, 255, 0.2)' 
+					},
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0px)' },
+					'50%': { transform: 'translateY(-10px)' },
+				},
+				'scan-line': {
+					'0%': { transform: 'translateY(0%)' },
+					'100%': { transform: 'translateY(100%)' },
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-glow': 'pulse-glow 3s infinite',
+				'float': 'float 6s ease-in-out infinite',
+				'scan-line': 'scan-line 2s linear infinite',
+			},
+			fontFamily: {
+				'pixel': ['"Press Start 2P"', 'cursive'],
+				'retro': ['"VT323"', 'monospace'],
 			}
 		}
 	},
