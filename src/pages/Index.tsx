@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Tabs, 
   TabsContent, 
@@ -11,7 +10,6 @@ import GameCard from '@/components/GameCard';
 import SystemFilters from '@/components/SystemFilters';
 import FileUpload from '@/components/FileUpload';
 import GraphicsSettings from '@/components/GraphicsSettings';
-import EmulatorSetupWizard from '@/components/EmulatorSetupWizard';
 import GameDetails from '@/components/GameDetails';
 import EmulatorPlayScreen from '@/components/EmulatorPlayScreen';
 import { EmulatorSystem, Game, preInstalledGames, systemRequirements, setupRequiredFiles } from '@/data/gameData';
@@ -31,10 +29,28 @@ import { toast } from 'sonner';
 const Index = () => {
   const [selectedSystem, setSelectedSystem] = useState<EmulatorSystem | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSetupWizard, setShowSetupWizard] = useState(true);
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [showGameDetails, setShowGameDetails] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [playingGame, setPlayingGame] = useState<Game | null>(null);
+  const [biosFadeOut, setBiosFadeOut] = useState(false);
+  
+  useEffect(() => {
+    // Handle BIOS screen fade out after 3 seconds
+    const timer = setTimeout(() => {
+      setBiosFadeOut(true);
+    }, 3000);
+
+    // Handle any key press to dismiss BIOS screen
+    const handleKeyPress = () => {
+      setBiosFadeOut(true);
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, []);
   
   const handlePlayGame = (game: Game) => {
     setPlayingGame(game);
@@ -120,7 +136,6 @@ const Index = () => {
               </div>
               
               <Button 
-                onClick={() => setShowSetupWizard(true)}
                 className="bg-emulator-button border border-emulator-highlight hover:bg-emulator-highlight"
               >
                 <InfoIcon size={18} className="mr-2" />
@@ -278,7 +293,6 @@ const Index = () => {
                       </p>
                       
                       <Button 
-                        onClick={() => setShowSetupWizard(true)}
                         className="w-full bg-emulator-button border border-emulator-highlight hover:bg-emulator-highlight"
                       >
                         <InfoIcon size={18} className="mr-2" />
@@ -296,18 +310,13 @@ const Index = () => {
       <footer className="border-t border-emulator-highlight py-4 px-6">
         <div className="container mx-auto flex justify-between items-center">
           <p className="text-xs text-emulator-text-secondary">
-            RetroNexus Emulator v1.0 — Simulated Interface
+            RetroNexus Emulator v1.0 — Windows 11 Compatible
           </p>
           <p className="text-xs text-emulator-text-secondary">
-            Using emulators responsibly means only emulating games you legally own.
+            Game files are saved to C:\RetroNexus\Games by default
           </p>
         </div>
       </footer>
-      
-      <EmulatorSetupWizard 
-        open={showSetupWizard} 
-        onOpenChange={setShowSetupWizard} 
-      />
       
       <GameDetails
         game={selectedGame}

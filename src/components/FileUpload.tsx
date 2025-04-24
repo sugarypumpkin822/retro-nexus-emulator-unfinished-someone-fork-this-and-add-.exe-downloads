@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, Check, X } from 'lucide-react';
@@ -43,7 +42,6 @@ const FileUpload: React.FC = () => {
   };
 
   const handleFiles = (files: File[]) => {
-    // Filter acceptable file types
     const acceptableFiles = files.filter(file => {
       const ext = file.name.split('.').pop()?.toLowerCase();
       return ['rom', 'iso', 'apk', 'exe', 'zip', 'nes', 'sfc', 'smc', 'n64', 'z64', 
@@ -59,7 +57,7 @@ const FileUpload: React.FC = () => {
     if (acceptableFiles.length > 0) {
       setSelectedFiles(prev => [...prev, ...acceptableFiles]);
       toast.success(`${acceptableFiles.length} files selected`, {
-        description: "Click 'Upload' to add these games to your library"
+        description: "Files will be saved to C:\\RetroNexus\\Games"
       });
     }
   };
@@ -82,11 +80,11 @@ const FileUpload: React.FC = () => {
     let progress = 0;
     const totalFiles = selectedFiles.length;
     
-    const progressToast = toast.loading(`Uploading 0/${totalFiles} files...`);
+    const progressToast = toast.loading(`Saving to C:\\RetroNexus\\Games (0/${totalFiles})`);
     
     const interval = setInterval(() => {
       progress += 1;
-      toast.loading(`Uploading ${progress}/${totalFiles} files...`, {
+      toast.loading(`Saving to C:\\RetroNexus\\Games (${progress}/${totalFiles})`, {
         id: progressToast
       });
       
@@ -94,9 +92,9 @@ const FileUpload: React.FC = () => {
         clearInterval(interval);
         setIsUploading(false);
         setSelectedFiles([]);
-        toast.success('Upload complete!', {
+        toast.success('Files imported successfully!', {
           id: progressToast,
-          description: `${totalFiles} files have been added to your library.`
+          description: `${totalFiles} files have been saved to C:\\RetroNexus\\Games`
         });
       }
     }, 800);

@@ -6,44 +6,70 @@ import { toast } from 'sonner';
 
 const EmulatorHeader: React.FC = () => {
   const handleDownloadClick = () => {
-    toast.info('Preparing download...', {
+    toast.info('Preparing RetroNexus package...', {
+      description: 'Bundling emulator core, BIOS files, and required dependencies.',
       duration: 2000,
     });
     
+    // Simulate checking system requirements
     setTimeout(() => {
-      toast.success('Download started!', {
-        description: 'RetroNexus-Emulator-v1.0.zip (245MB)',
+      toast.success('Download starting!', {
+        description: 'RetroNexus-Win11-Complete.zip (475MB)\nIncludes: Emulator, BIOS, DirectX, and required runtime files',
       });
+      
+      // Trigger file download simulation
+      const link = document.createElement('a');
+      link.href = '#'; // In a real implementation, this would be the actual download URL
+      link.download = 'RetroNexus-Win11-Complete.zip';
+      link.click();
     }, 2000);
   };
 
   return (
-    <header className="flex items-center justify-between w-full px-6 py-3 border-b border-emulator-highlight">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-lg bg-emulator-accent flex items-center justify-center animate-pulse-glow">
-            <span className="text-2xl font-bold text-black">R</span>
-          </div>
-          <div>
-            <h1 
-              className="text-2xl font-bold tracking-tighter font-retro glow-text" 
-              data-text="RetroNexus"
-            >
-              RetroNexus
-            </h1>
-            <p className="text-xs text-emulator-text-secondary">Multi-System Emulator</p>
+    <div className="relative">
+      <header className="flex items-center justify-between w-full px-6 py-3 border-b border-emulator-highlight">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-lg bg-emulator-accent flex items-center justify-center animate-pulse-glow">
+              <span className="text-2xl font-bold text-black">R</span>
+            </div>
+            <div>
+              <h1 
+                className="text-2xl font-bold tracking-tighter font-retro glow-text" 
+                data-text="RetroNexus"
+              >
+                RetroNexus
+              </h1>
+              <p className="text-xs text-emulator-text-secondary">Multi-System Emulator</p>
+            </div>
           </div>
         </div>
+        
+        <Button 
+          onClick={handleDownloadClick}
+          className="bg-gradient-to-r from-emulator-accent to-emulator-accent-secondary text-black font-bold py-2 px-6 clip-download-button animate-pulse-glow"
+        >
+          <Download size={18} className="mr-2" />
+          Download Complete Package
+        </Button>
+      </header>
+
+      {/* BIOS Screen Overlay */}
+      <div className="fixed inset-0 bg-black z-50 flex items-center justify-center retro-container animate-fade-in pointer-events-none">
+        <div className="scanline"></div>
+        <div className="text-emulator-accent font-mono space-y-2 max-w-2xl p-8">
+          <p className="text-2xl mb-4 animate-pulse-glow">RetroNexus BIOS v1.0</p>
+          <p>System Initialization...</p>
+          <p>CPU: Detected</p>
+          <p>Memory: OK</p>
+          <p>DirectX Runtime: Found</p>
+          <p>Game Directory: C:\RetroNexus\Games</p>
+          <p>BIOS Files: Bundled</p>
+          <p className="mt-4 text-green-400">All components verified. Loading emulator...</p>
+          <p className="animate-pulse text-sm mt-4">Press any key to continue...</p>
+        </div>
       </div>
-      
-      <Button 
-        onClick={handleDownloadClick}
-        className="bg-gradient-to-r from-emulator-accent to-emulator-accent-secondary text-black font-bold py-2 px-6 clip-download-button animate-pulse-glow"
-      >
-        <Download size={18} className="mr-2" />
-        Download Emulator v1.0
-      </Button>
-    </header>
+    </div>
   );
 };
 
