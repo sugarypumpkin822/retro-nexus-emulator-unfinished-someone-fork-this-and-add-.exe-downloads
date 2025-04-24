@@ -1,10 +1,21 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 const EmulatorHeader: React.FC = () => {
+  const [biosFadeOut, setBiosFadeOut] = useState(false);
+  
+  // Effect to make BIOS screen disappear after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setBiosFadeOut(true);
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleDownloadClick = () => {
     toast.info('Preparing RetroNexus package...', {
       description: 'Bundling emulator core, BIOS files, and required dependencies.',
@@ -37,9 +48,14 @@ const EmulatorHeader: React.FC = () => {
           }, 1500);
         }, 1000);
         
-        // Create a valid downloadable file instead of an empty link
-        // Generate a simple text file with installation instructions
-        const installText = `
+        // Create a zip file with multiple bundled files instead of just a text file
+        const generateZipFile = async () => {
+          // We'll use JSZip to create a proper ZIP file
+          const JSZip = await import('jszip').then(mod => mod.default);
+          const zip = new JSZip();
+          
+          // Add installation instructions
+          zip.file("README.txt", `
 RetroNexus Emulator - Installation Instructions
 ==============================================
 
@@ -58,24 +74,50 @@ System Requirements:
 - 2GB free disk space
 
 For support, visit: https://retronexus.example.com
-        `;
+          `);
+          
+          // Add placeholder executable file (just text data for simulation)
+          zip.file("RetroNexus.exe", "This would be the actual executable in a real package");
+          
+          // Create a BIOS folder with placeholder files
+          const biosFolder = zip.folder("BIOS");
+          biosFolder.file("ps1_bios.bin", "PlayStation BIOS data would go here");
+          biosFolder.file("dc_bios.bin", "Dreamcast BIOS data would go here");
+          biosFolder.file("gba_bios.bin", "Game Boy Advance BIOS data would go here");
+          
+          // Create a DirectX folder
+          const dxFolder = zip.folder("DirectX");
+          dxFolder.file("dxsetup.exe", "DirectX setup executable would go here");
+          
+          // Create an empty Games folder
+          const gamesFolder = zip.folder("Games");
+          gamesFolder.file(".placeholder", "Game ROMs will be stored here");
+          
+          // Generate the ZIP blob
+          const content = await zip.generateAsync({type: "blob"});
+          
+          // Create download link for the ZIP file
+          const url = URL.createObjectURL(content);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'RetroNexus-Win11-Complete.zip';
+          document.body.appendChild(link);
+          link.click();
+          
+          // Clean up
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+            document.body.removeChild(link);
+          }, 100);
+        };
         
-        // Create a blob with the text file content
-        const blob = new Blob([installText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        
-        // Create a download link and trigger it
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'RetroNexus-Win11-Complete.txt';
-        document.body.appendChild(link);
-        link.click();
-        
-        // Clean up
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-          document.body.removeChild(link);
-        }, 100);
+        // Generate and download the ZIP file
+        generateZipFile().catch(err => {
+          console.error("Error generating ZIP file:", err);
+          toast.error("Download failed", {
+            description: "There was a problem generating the package. Please try again."
+          });
+        });
       }, 1500);
     }, 2000);
   };
@@ -109,8 +151,9 @@ For support, visit: https://retronexus.example.com
         </Button>
       </header>
 
-      {/* BIOS Screen Overlay */}
-      <div className="fixed inset-0 bg-black z-50 flex items-center justify-center retro-container animate-fade-in pointer-events-none">
+      {/* BIOS Screen Overlay with fade-out animation */}
+      <div className={`fixed inset-0 bg-black z-50 flex items-center justify-center retro-container ${biosFadeOut ? 'animate-fade-out pointer-events-none opacity-0' : 'animate-fade-in pointer-events-none'}`}
+           style={{ transition: 'opacity 1s ease-out' }}>
         <div className="scanline"></div>
         <div className="text-emulator-accent font-mono space-y-2 max-w-2xl p-8">
           <p className="text-2xl mb-4 animate-pulse-glow">RetroNexus BIOS v1.0</p>
