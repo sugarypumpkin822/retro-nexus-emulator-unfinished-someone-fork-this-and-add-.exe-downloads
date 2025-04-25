@@ -13,14 +13,12 @@ import FileUpload from '@/components/FileUpload';
 import GameDetails from '@/components/GameDetails';
 import EmulatorPlayScreen from '@/components/EmulatorPlayScreen';
 import CustomizableBIOS from '@/components/CustomizableBIOS';
-import EmulatorSetupWizard from '@/components/EmulatorSetupWizard';
 import { EmulatorSystem, Game, preInstalledGames, systemRequirements, setupRequiredFiles } from '@/data/gameData';
 import { Button } from '@/components/ui/button';
 import { 
   GamepadIcon, 
   Upload, 
-  HardDriveIcon, 
-  InfoIcon, 
+  HardDrive, 
   Search 
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -33,7 +31,6 @@ const Index = () => {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [playingGame, setPlayingGame] = useState<Game | null>(null);
   const [showBIOS, setShowBIOS] = useState(true);
-  const [setupWizardOpen, setSetupWizardOpen] = useState(false);
   
   const handlePlayGame = (game: Game) => {
     setPlayingGame(game);
@@ -57,10 +54,6 @@ const Index = () => {
   
   const handleBIOSComplete = () => {
     setShowBIOS(false);
-  };
-  
-  const handleOpenSetupWizard = () => {
-    setSetupWizardOpen(true);
   };
   
   const filteredGames = preInstalledGames.filter(game => {
@@ -105,7 +98,7 @@ const Index = () => {
                 value="system"
                 className="data-[state=active]:border-b-2 data-[state=active]:border-emulator-accent data-[state=active]:text-emulator-accent data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-4 py-2"
               >
-                <HardDriveIcon size={18} className="mr-2" />
+                <HardDrive size={18} className="mr-2" />
                 System
               </TabsTrigger>
             </TabsList>
@@ -122,14 +115,6 @@ const Index = () => {
                   className="pl-10 bg-emulator-button border-emulator-highlight"
                 />
               </div>
-              
-              <Button 
-                className="bg-emulator-button border border-emulator-highlight hover:bg-emulator-highlight"
-                onClick={handleOpenSetupWizard}
-              >
-                <InfoIcon size={18} className="mr-2" />
-                Setup Wizard
-              </Button>
             </div>
             
             <SystemFilters 
@@ -169,7 +154,7 @@ const Index = () => {
               
               <div className="mt-8 p-4 bg-emulator-highlight/20 border border-emulator-highlight rounded-lg">
                 <h3 className="font-bold mb-2 flex items-center">
-                  <InfoIcon size={16} className="mr-2 text-emulator-accent" />
+                  <Search size={16} className="mr-2 text-emulator-accent" />
                   Supported File Types
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
@@ -208,6 +193,7 @@ const Index = () => {
                 <h2 className="text-2xl font-bold mb-2">System Information</h2>
                 <p className="text-emulator-text-secondary">
                   Information about system requirements and configuration for the RetroNexus Emulator.
+                  You can access additional settings by pressing DEL, F2, or F12 during the BIOS screen at startup.
                 </p>
               </div>
               
@@ -215,7 +201,7 @@ const Index = () => {
                 <div className="bg-emulator-card-bg border border-emulator-highlight rounded-lg overflow-hidden">
                   <div className="bg-emulator-highlight/20 p-3 border-b border-emulator-highlight flex justify-between items-center">
                     <h3 className="font-bold">System Requirements</h3>
-                    <HardDriveIcon size={18} className="text-emulator-text-secondary" />
+                    <HardDrive size={18} className="text-emulator-text-secondary" />
                   </div>
                   
                   <div className="p-4">
@@ -244,7 +230,7 @@ const Index = () => {
                   <div className="bg-emulator-card-bg border border-emulator-highlight rounded-lg overflow-hidden">
                     <div className="bg-emulator-highlight/20 p-3 border-b border-emulator-highlight flex justify-between items-center">
                       <h3 className="font-bold">Required Files</h3>
-                      <HardDriveIcon size={18} className="text-emulator-text-secondary" />
+                      <HardDrive size={18} className="text-emulator-text-secondary" />
                     </div>
                     
                     <ul className="p-4 space-y-2 text-sm">
@@ -259,21 +245,20 @@ const Index = () => {
                   
                   <div className="bg-emulator-card-bg border border-emulator-highlight rounded-lg overflow-hidden">
                     <div className="bg-emulator-highlight/20 p-3 border-b border-emulator-highlight">
-                      <h3 className="font-bold">Setup Configuration</h3>
+                      <h3 className="font-bold">BIOS Access</h3>
                     </div>
                     
                     <div className="p-4">
                       <p className="text-sm text-emulator-text-secondary mb-4">
-                        If you need to reconfigure your emulator or check for missing files, you can run the setup wizard again.
+                        To access the BIOS settings and configure graphics options, press <strong>DEL</strong>, <strong>F2</strong>, or <strong>F12</strong> during the system startup screen.
                       </p>
                       
-                      <Button 
-                        className="w-full bg-emulator-button border border-emulator-highlight hover:bg-emulator-highlight"
-                        onClick={handleOpenSetupWizard}
-                      >
-                        <InfoIcon size={18} className="mr-2" />
-                        Run Setup Wizard
-                      </Button>
+                      <div className="bg-black/30 p-3 rounded border border-emulator-highlight/50">
+                        <p className="text-xs font-mono">
+                          The BIOS screen will appear automatically during startup. If you don't press any key, 
+                          the system will automatically boot after the configured delay (default: 5 seconds).
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -286,7 +271,7 @@ const Index = () => {
       <footer className="border-t border-emulator-highlight py-4 px-6">
         <div className="container mx-auto flex justify-between items-center">
           <p className="text-xs text-emulator-text-secondary">
-            RetroNexus Emulator v1.0 — Windows 11 Compatible
+            RetroNexus Emulator v1.2.5 — Windows 11 Compatible
           </p>
           <p className="text-xs text-emulator-text-secondary">
             Game files are saved to C:\RetroNexus\Games by default
@@ -305,11 +290,6 @@ const Index = () => {
         game={playingGame}
         open={!!playingGame}
         onClose={handleClosePlayScreen}
-      />
-
-      <EmulatorSetupWizard
-        open={setupWizardOpen}
-        onOpenChange={setSetupWizardOpen}
       />
     </div>
   );

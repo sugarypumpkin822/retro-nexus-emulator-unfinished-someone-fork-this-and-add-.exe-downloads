@@ -28,20 +28,23 @@ const CustomizableBIOS: React.FC<CustomizableBIOSProps> = ({ onComplete }) => {
   const [isBooting, setIsBooting] = useState(false);
   const [biosFadeOut, setBiosFadeOut] = useState(false);
   const [autoExit, setAutoExit] = useState(true);
+  const [accessKey, setAccessKey] = useState<'del' | 'f2' | 'f12' | 'all'>('all');
+  const [bootDelay, setBootDelay] = useState(5);
+  const [pressedKeys, setPressedKeys] = useState<string[]>([]);
   
-  // Auto-exit BIOS after 5 seconds if enabled
+  // Auto-exit BIOS after boot delay if enabled
   useEffect(() => {
     if (autoExit) {
       const timer = setTimeout(() => {
         handleBoot();
-      }, 5000);
+      }, bootDelay * 1000);
       
       return () => clearTimeout(timer);
     }
-  }, [autoExit]);
+  }, [autoExit, bootDelay]);
   
+  // Initial progress animation
   useEffect(() => {
-    // Initial progress animation
     const interval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
@@ -54,6 +57,33 @@ const CustomizableBIOS: React.FC<CustomizableBIOSProps> = ({ onComplete }) => {
     
     return () => clearInterval(interval);
   }, []);
+  
+  // Listen for keyboard events to capture BIOS access keys
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if the key pressed matches the configured BIOS access key
+      if (
+        (accessKey === 'del' && e.key === 'Delete') ||
+        (accessKey === 'f2' && e.key === 'F2') ||
+        (accessKey === 'f12' && e.key === 'F12') ||
+        (accessKey === 'all' && (e.key === 'Delete' || e.key === 'F2' || e.key === 'F12'))
+      ) {
+        // Add to pressed keys (for visual feedback)
+        setPressedKeys(prev => [...prev, e.key]);
+        
+        // Stop auto-boot if configured
+        setAutoExit(false);
+        
+        // Show a toast to indicate key was pressed
+        toast.info('BIOS access key detected', {
+          description: `${e.key} key pressed. BIOS auto-boot stopped.`
+        });
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [accessKey]);
   
   const handleTabChange = (tab: 'system' | 'graphics' | 'boot') => {
     setActiveTab(tab);
@@ -99,7 +129,7 @@ const CustomizableBIOS: React.FC<CustomizableBIOSProps> = ({ onComplete }) => {
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-emulator-text-secondary">BIOS Version:</span>
-            <span className="font-mono">v1.2.5 (Build 2023.04.25)</span>
+            <span className="font-mono">v1.2.5 (Build 2025.04.25)</span>
           </div>
           <div className="flex justify-between">
             <span className="text-emulator-text-secondary">CPU:</span>
@@ -140,14 +170,14 @@ const CustomizableBIOS: React.FC<CustomizableBIOSProps> = ({ onComplete }) => {
             <label className="block text-sm font-medium mb-2">Boot Delay</label>
             <div className="flex items-center space-x-2">
               <Slider 
-                defaultValue={[5]} 
+                value={[bootDelay]} 
                 max={10}
                 min={0} 
                 step={1}
                 className="bg-emulator-button"
-                onValueChange={(value) => {}} 
+                onValueChange={(value) => setBootDelay(value[0])} 
               />
-              <span className="min-w-12 text-right">5 sec</span>
+              <span className="min-w-12 text-right">{bootDelay} sec</span>
             </div>
           </div>
           
@@ -161,6 +191,29 @@ const CustomizableBIOS: React.FC<CustomizableBIOSProps> = ({ onComplete }) => {
               />
               <span>{autoExit ? 'Enabled' : 'Disabled'}</span>
             </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-2">BIOS Access Key</label>
+            <Select 
+              value={accessKey}
+              onValueChange={(value: 'del' | 'f2' | 'f12' | 'all') => setAccessKey(value)}
+            >
+              <SelectTrigger className="bg-emulator-button border-emulator-highlight">
+                <SelectValue placeholder="Select BIOS access key" />
+              </SelectTrigger>
+              <SelectContent className="bg-emulator-card-bg border-emulator-highlight">
+                <SelectGroup>
+                  <SelectItem value="del">DEL key</SelectItem>
+                  <SelectItem value="f2">F2 key</SelectItem>
+                  <SelectItem value="f12">F12 key</SelectItem>
+                  <SelectItem value="all">All keys (DEL, F2, F12)</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-emulator-text-secondary mt-1">
+              Key(s) to press during boot to access BIOS setup
+            </p>
           </div>
           
           <div>
@@ -434,6 +487,16 @@ const CustomizableBIOS: React.FC<CustomizableBIOSProps> = ({ onComplete }) => {
               <span className="text-sm">SYSTEM READY</span>
             </div>
           </div>
+          {autoExit && (
+            <div className="mt-2 text-sm">
+              <span className="animate-pulse">
+                Press <kbd className="bg-emulator-highlight/50 px-1.5 py-0.5 rounded font-bold">DEL</kbd>, 
+                <kbd className="bg-emulator-highlight/50 px-1.5 py-0.5 rounded font-bold mx-1">F2</kbd>, or 
+                <kbd className="bg-emulator-highlight/50 px-1.5 py-0.5 rounded font-bold ml-1">F12</kbd> to enter setup
+              </span>
+              <span className="ml-4">Boot in {bootDelay}s</span>
+            </div>
+          )}
         </div>
         
         <div className="mb-4">
