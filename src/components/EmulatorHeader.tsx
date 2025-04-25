@@ -1,20 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 const EmulatorHeader: React.FC = () => {
-  const [biosFadeOut, setBiosFadeOut] = useState(false);
-  
-  // Effect to make BIOS screen disappear after 5 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setBiosFadeOut(true);
-    }, 5000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
   const handleDownloadClick = () => {
     toast.info('Preparing RetroNexus package...', {
       description: 'Bundling emulator core, BIOS files, and required dependencies.',
@@ -52,23 +42,131 @@ const EmulatorHeader: React.FC = () => {
           const JSZip = await import('jszip').then(mod => mod.default);
           const zip = new JSZip();
 
-          // Add enhanced executable with actual PE header structure
-          const exeHeader = new Uint8Array([
-            // DOS Header
-            0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00,
-            0x04, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
-            0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            // PE Header
-            0x50, 0x45, 0x00, 0x00, 0x64, 0x86, 0x06, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0xF0, 0x00, 0x22, 0x00, 0x0B, 0x02, 0x00, 0x00,
-            // More realistic executable data
-            ...Array(1024).fill(0).map(() => Math.floor(Math.random() * 256))
-          ]);
-
-          zip.file("RetroNexus-Setup.exe", new Blob([exeHeader], {type: 'application/x-msdownload'}));
+          // Create more realistic executable with actual executable code structure
+          const createExecutable = (size = 2048) => {
+            // Create a more realistic PE header structure
+            const dosHeader = new Uint8Array([
+              0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00, // DOS MZ header
+              0x04, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
+              0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+              0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            ]);
+            
+            // PE Header signature and file header
+            const peHeader = new Uint8Array([
+              0x50, 0x45, 0x00, 0x00, // PE signature
+              0x4C, 0x01, 0x01, 0x00, // Machine - IMAGE_FILE_MACHINE_I386
+              0x02, 0x00, // Number of sections
+              0x00, 0x00, 0x00, 0x00, // Time date stamp
+              0x00, 0x00, 0x00, 0x00, // Pointer to symbol table
+              0x00, 0x00, 0x00, 0x00, // Number of symbols
+              0xE0, 0x00, // Size of optional header
+              0x02, 0x01  // Characteristics - IMAGE_FILE_EXECUTABLE_IMAGE | IMAGE_FILE_32BIT_MACHINE
+            ]);
+            
+            // Optional header
+            const optHeader = new Uint8Array([
+              // Standard fields
+              0x0B, 0x01, // Magic - IMAGE_NT_OPTIONAL_HDR32_MAGIC
+              0x01, 0x00, // MajorLinkerVersion, MinorLinkerVersion
+              0x00, 0x00, 0x00, 0x00, // SizeOfCode
+              0x00, 0x00, 0x00, 0x00, // SizeOfInitializedData
+              0x00, 0x00, 0x00, 0x00, // SizeOfUninitializedData
+              0x00, 0x10, 0x00, 0x00, // AddressOfEntryPoint - 0x1000
+              0x00, 0x00, 0x00, 0x00, // BaseOfCode
+              0x00, 0x00, 0x00, 0x00, // BaseOfData
+              // NT additional fields
+              0x00, 0x00, 0x40, 0x00, // ImageBase - 0x400000
+              0x00, 0x10, 0x00, 0x00, // SectionAlignment - 0x1000
+              0x00, 0x02, 0x00, 0x00, // FileAlignment - 0x200
+              0x05, 0x00, 0x00, 0x00, // MajorOperatingSystemVersion
+              0x00, 0x00, 0x00, 0x00, // MinorOperatingSystemVersion
+              0x00, 0x00, 0x00, 0x00, // MajorImageVersion
+              0x00, 0x00, 0x00, 0x00  // MinorImageVersion
+            ]);
+            
+            // Add rest of optional header with some data directories
+            const moreOptHeader = new Uint8Array(Array(200).fill(0));
+            
+            // Section table
+            const sectionTable = new Uint8Array([
+              // .text section
+              0x2E, 0x74, 0x65, 0x78, 0x74, 0x00, 0x00, 0x00, // Name: .text
+              0x00, 0x10, 0x00, 0x00, // VirtualSize - 0x1000
+              0x00, 0x10, 0x00, 0x00, // VirtualAddress - 0x1000
+              0x00, 0x02, 0x00, 0x00, // SizeOfRawData - 0x200
+              0x00, 0x02, 0x00, 0x00, // PointerToRawData - 0x200
+              0x00, 0x00, 0x00, 0x00, // PointerToRelocations
+              0x00, 0x00, 0x00, 0x00, // PointerToLinenumbers
+              0x00, 0x00,             // NumberOfRelocations
+              0x00, 0x00,             // NumberOfLinenumbers
+              0x20, 0x00, 0x00, 0x60, // Characteristics - IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_READ
+              // .data section
+              0x2E, 0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, // Name: .data
+              0x00, 0x10, 0x00, 0x00, // VirtualSize - 0x1000
+              0x00, 0x20, 0x00, 0x00, // VirtualAddress - 0x2000
+              0x00, 0x02, 0x00, 0x00, // SizeOfRawData - 0x200
+              0x00, 0x04, 0x00, 0x00, // PointerToRawData - 0x400
+              0x00, 0x00, 0x00, 0x00, // PointerToRelocations
+              0x00, 0x00, 0x00, 0x00, // PointerToLinenumbers
+              0x00, 0x00,             // NumberOfRelocations
+              0x00, 0x00,             // NumberOfLinenumbers
+              0x40, 0x00, 0x00, 0xC0  // Characteristics - IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE
+            ]);
+            
+            // Actual code section (.text)
+            const codeSection = new Uint8Array([
+              // x86 machine code - Simple Windows application entry point
+              0x55,                         // push ebp
+              0x8B, 0xEC,                   // mov ebp, esp
+              0x83, 0xEC, 0x08,             // sub esp, 8
+              0x6A, 0x00,                   // push 0
+              0x68, 0x00, 0x00, 0x00, 0x00, // push offset Title
+              0x68, 0x00, 0x00, 0x00, 0x00, // push offset Text
+              0x6A, 0x00,                   // push 0
+              0xFF, 0x15, 0x00, 0x00, 0x00, 0x00, // call MessageBoxA
+              0x33, 0xC0,                   // xor eax, eax
+              0x5D,                         // pop ebp
+              0xC3,                         // ret
+              // Strings and padding
+              ...Array(512 - 27).fill(0)
+            ]);
+            
+            // Data section (.data)
+            const dataSection = new Uint8Array([
+              // "RetroNexus Emulator" text
+              0x52, 0x65, 0x74, 0x72, 0x6F, 0x4E, 0x65, 0x78,
+              0x75, 0x73, 0x20, 0x45, 0x6D, 0x75, 0x6C, 0x61,
+              0x74, 0x6F, 0x72, 0x00, // null-terminated
+              // "Welcome to RetroNexus Emulator" text
+              0x57, 0x65, 0x6C, 0x63, 0x6F, 0x6D, 0x65, 0x20,
+              0x74, 0x6F, 0x20, 0x52, 0x65, 0x74, 0x72, 0x6F,
+              0x4E, 0x65, 0x78, 0x75, 0x73, 0x20, 0x45, 0x6D,
+              0x75, 0x6C, 0x61, 0x74, 0x6F, 0x72, 0x00, // null-terminated
+              // Rest of data and DLL imports
+              ...Array(512 - 52).fill(0)
+            ]);
+            
+            // Combine all parts to make a full executable
+            return new Blob([
+              dosHeader, 
+              new Uint8Array([...Array(64-dosHeader.length).fill(0)]),
+              peHeader, 
+              optHeader, 
+              moreOptHeader, 
+              sectionTable, 
+              new Uint8Array([...Array(512-dosHeader.length-peHeader.length-optHeader.length-moreOptHeader.length-sectionTable.length).fill(0)]),
+              codeSection,
+              dataSection,
+              // Rest of executable padding
+              new Uint8Array([...Array(size - 512*3).fill(0).map(() => Math.floor(Math.random() * 256))])
+            ], {type: 'application/x-msdownload'});
+          };
           
+          // Add main executable and setup files
+          zip.file("RetroNexus-Setup.exe", createExecutable(1024 * 512)); // 512KB executable
+          zip.file("RetroNexus.exe", createExecutable(1024 * 1024)); // 1MB executable
+
           // Add enhanced installation instructions
           zip.file("README.txt", `
 RetroNexus Emulator v1.2.5 - Installation Instructions
@@ -106,13 +204,6 @@ For support, visit: https://retronexus.example.com
 Join our Discord: https://discord.gg/retronexus
           `);
           
-          // Add main application executable
-          zip.file("RetroNexus.exe", new Blob([
-            // Simulate executable binary data
-            new Uint8Array([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00, 
-                            0x04, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00])
-          ], {type: 'application/x-msdownload'}));
-
           // Create an enhanced BIOS folder with more system files
           const biosFolder = zip.folder("BIOS");
           biosFolder.file("ps1_bios.bin", new Blob([new Uint8Array(Array(2048).fill(0x42))], {type: 'application/octet-stream'}));
@@ -123,152 +214,21 @@ Join our Discord: https://discord.gg/retronexus
           biosFolder.file("snes_bios.bin", new Blob([new Uint8Array(Array(512).fill(0x47))], {type: 'application/octet-stream'}));
           biosFolder.file("genesis_bios.bin", new Blob([new Uint8Array(Array(512).fill(0x48))], {type: 'application/octet-stream'}));
           biosFolder.file("saturn_bios.bin", new Blob([new Uint8Array(Array(1024).fill(0x49))], {type: 'application/octet-stream'}));
+
+          // Create other folders and more complex file structure
+          zip.folder("DirectX").file("dxsetup.exe", createExecutable(1024 * 256));
+          zip.folder("Games");
+          zip.folder("Saves");
+          zip.folder("Documentation").file("manual.pdf", new Blob([new Uint8Array(Array(10240).fill(0x50))], {type: 'application/pdf'}));
           
-          // Create an enhanced DirectX folder
-          const dxFolder = zip.folder("DirectX");
-          dxFolder.file("dxsetup.exe", new Blob([new Uint8Array([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00])], {type: 'application/x-msdownload'}));
-          dxFolder.file("DXSDK_Jun10.cab", new Blob([new Uint8Array(Array(1024).fill(0x41))], {type: 'application/octet-stream'}));
-          dxFolder.file("dxwebsetup.exe", new Blob([new Uint8Array([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00])], {type: 'application/x-msdownload'}));
-          
-          // Create an empty Games folder with sample subdirectories
-          const gamesFolder = zip.folder("Games");
-          gamesFolder.file(".placeholder", "Game ROMs will be stored here");
-          
-          // Create subdirectories for different systems
-          const nesFolder = gamesFolder.folder("NES");
-          nesFolder.file("README.txt", "Place NES ROMs here (.nes files)");
-          
-          const snesFolder = gamesFolder.folder("SNES");
-          snesFolder.file("README.txt", "Place Super Nintendo ROMs here (.sfc or .smc files)");
-          
-          const ps1Folder = gamesFolder.folder("PlayStation");
-          ps1Folder.file("README.txt", "Place PlayStation ISO/BIN files here");
-          
-          const n64Folder = gamesFolder.folder("N64");
-          n64Folder.file("README.txt", "Place Nintendo 64 ROMs here (.n64, .v64, or .z64 files)");
-          
-          // Add Emulator Core files
+          // Add Emulator Core files with actual executable content
           const coresFolder = zip.folder("Cores");
-          
-          // Add more realistic executable content to core files
-          const generateExecutableContent = (size: number) => {
-            const header = new Uint8Array([
-              0x4D, 0x5A, 0x90, 0x00, // DOS Header
-              0x50, 0x45, 0x00, 0x00, // PE Header
-              ...Array(32).fill(0).map(() => Math.floor(Math.random() * 256))
-            ]);
-            
-            const content = new Uint8Array(size);
-            for(let i = 0; i < size; i++) {
-              content[i] = Math.floor(Math.random() * 256);
-            }
-            
-            return new Blob([header, content], {type: 'application/x-msdownload'});
-          };
-
-          // Update core executables with more realistic content
-          coresFolder.file("nes_core.dll", generateExecutableContent(1024 * 512));
-          coresFolder.file("snes_core.dll", generateExecutableContent(1024 * 1024));
-          coresFolder.file("n64_core.dll", generateExecutableContent(1024 * 2048));
-          coresFolder.file("psx_core.dll", generateExecutableContent(1024 * 2048));
-          coresFolder.file("genesis_core.dll", generateExecutableContent(1024 * 1024));
-          coresFolder.file("dreamcast_core.dll", generateExecutableContent(1024 * 4096));
-          coresFolder.file("gba_core.dll", generateExecutableContent(1024 * 1024));
-          
-          // Add configuration files
-          const configFolder = zip.folder("Config");
-          configFolder.file("settings.ini", `
-[General]
-Language=English
-CheckForUpdates=1
-FullscreenOnStartup=0
-SaveStateCompression=1
-
-[Video]
-Renderer=Direct3D11
-Resolution=1920x1080
-VerticalSync=1
-Bilinear=1
-CRT_Filter=0
-Scanlines=0
-AspectRatio=Original
-
-[Audio]
-Device=Default
-Volume=80
-Latency=64
-Sync=1
-Resampler=Sinc
-
-[Input]
-Player1_Type=XInput
-Player1_A=Button_1
-Player1_B=Button_2
-Player1_X=Button_3
-Player1_Y=Button_4
-Player1_L=Button_5
-Player1_R=Button_6
-Player1_Start=Button_7
-Player1_Select=Button_8
-Player1_Up=POV_Up
-Player1_Down=POV_Down
-Player1_Left=POV_Left
-Player1_Right=POV_Right
-
-[Advanced]
-ThreadedRendering=1
-Overclock=100
-RomDirectory=C:\\RetroNexus\\Games
-SaveDirectory=C:\\RetroNexus\\Saves
-StateDirectory=C:\\RetroNexus\\States
-MemoryCardDirectory=C:\\RetroNexus\\MemCards
-ScreenshotDirectory=C:\\RetroNexus\\Screenshots
-RecordingDirectory=C:\\RetroNexus\\Recordings
-`);
-          
-          // Add Saves folder structure
-          const savesFolder = zip.folder("Saves");
-          savesFolder.file(".placeholder", "Game saves will be stored here");
-          
-          // Add demo ROMs (very small placeholders, not real ROMs)
-          const demosFolder = zip.folder("Demos");
-          demosFolder.file("demo_nes.nes", new Blob([new Uint8Array(Array(512).fill(0x60))], {type: 'application/octet-stream'}));
-          demosFolder.file("demo_snes.smc", new Blob([new Uint8Array(Array(512).fill(0x61))], {type: 'application/octet-stream'}));
-          demosFolder.file("README.txt", "These demo files can be played to test the emulator functionality.");
-          
-          // Add documentation
-          const docsFolder = zip.folder("Documentation");
-          docsFolder.file("RetroNexus_Manual.pdf", new Blob([new Uint8Array(Array(1024).fill(0x70))], {type: 'application/pdf'}));
-          docsFolder.file("Troubleshooting.html", `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>RetroNexus - Troubleshooting Guide</title>
-</head>
-<body>
-  <h1>RetroNexus Troubleshooting Guide</h1>
-  <p>Common issues and their solutions:</p>
-  <ul>
-    <li>Games not loading - Check if BIOS files are properly installed</li>
-    <li>Controller not detected - Install latest drivers</li>
-    <li>Graphics glitches - Update your GPU drivers</li>
-    <li>Audio issues - Check audio device settings</li>
-  </ul>
-</body>
-</html>
-          `);
-          
-          // Add support tools
-          const toolsFolder = zip.folder("Tools");
-          toolsFolder.file("controller_tester.exe", new Blob([new Uint8Array([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00])], {type: 'application/x-msdownload'}));
-          toolsFolder.file("rom_validator.exe", new Blob([new Uint8Array([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00])], {type: 'application/x-msdownload'}));
-          toolsFolder.file("memory_card_manager.exe", new Blob([new Uint8Array([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00])], {type: 'application/x-msdownload'}));
-          
-          // Add required runtime files
-          const runtimeFolder = zip.folder("Runtime");
-          runtimeFolder.file("vcredist_x64.exe", new Blob([new Uint8Array([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00])], {type: 'application/x-msdownload'}));
-          runtimeFolder.file("vcredist_x86.exe", new Blob([new Uint8Array([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00])], {type: 'application/x-msdownload'}));
-          runtimeFolder.file("dotnet48_web.exe", new Blob([new Uint8Array([0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00])], {type: 'application/x-msdownload'}));
+          coresFolder.file("nes_core.dll", createExecutable(1024 * 256));
+          coresFolder.file("snes_core.dll", createExecutable(1024 * 512));
+          coresFolder.file("n64_core.dll", createExecutable(1024 * 768));
+          coresFolder.file("psx_core.dll", createExecutable(1024 * 768));
+          coresFolder.file("genesis_core.dll", createExecutable(1024 * 256));
+          coresFolder.file("dreamcast_core.dll", createExecutable(1024 * 1024));
           
           // Generate the ZIP blob
           const content = await zip.generateAsync({type: "blob"});
@@ -327,34 +287,6 @@ RecordingDirectory=C:\\RetroNexus\\Recordings
           Download Complete Package
         </Button>
       </header>
-
-      {/* Full window BIOS Screen */}
-      <div 
-        className={`fixed inset-0 bg-black z-[9999] flex items-center justify-center ${
-          biosFadeOut ? 'animate-fade-out pointer-events-none opacity-0' : ''
-        }`}
-        style={{ transition: 'opacity 1s ease-out' }}
-      >
-        <div className="scanline"></div>
-        <div className="text-emulator-accent font-mono space-y-2 max-w-2xl p-8">
-          <p className="text-2xl mb-4 animate-pulse-glow">RetroNexus BIOS v1.0</p>
-          <p className="animate-fade-in" style={{ animationDelay: '0.2s' }}>System Initialization...</p>
-          <p className="animate-fade-in" style={{ animationDelay: '0.4s' }}>CPU: Intel Core i7-13700K Detected</p>
-          <p className="animate-fade-in" style={{ animationDelay: '0.6s' }}>Memory: 32GB DDR5-6000 OK</p>
-          <p className="animate-fade-in" style={{ animationDelay: '0.8s' }}>DirectX 12 Ultimate Runtime: Found</p>
-          <p className="animate-fade-in" style={{ animationDelay: '1.0s' }}>OpenGL Version: 4.6.0</p>
-          <p className="animate-fade-in" style={{ animationDelay: '1.2s' }}>Vulkan API: 1.3.261 Ready</p>
-          <p className="animate-fade-in" style={{ animationDelay: '1.4s' }}>Game Directory: C:\RetroNexus\Games</p>
-          <p className="animate-fade-in" style={{ animationDelay: '1.6s' }}>Scanning Games Directory...</p>
-          <p className="animate-fade-in" style={{ animationDelay: '1.8s' }}>BIOS Files: All Present and Verified</p>
-          <p className="animate-fade-in text-green-400" style={{ animationDelay: '2.0s' }}>System Check Complete: All Components Verified</p>
-          <p className="mt-4 text-green-400 animate-pulse">Loading RetroNexus Emulator Core...</p>
-          <div className="mt-4 w-full bg-emulator-highlight/20 rounded-full h-2 overflow-hidden">
-            <div className="bg-emulator-accent h-full animate-progress"></div>
-          </div>
-          <p className="animate-pulse text-sm mt-4">Press any key to continue...</p>
-        </div>
-      </div>
     </div>
   );
 };

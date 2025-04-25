@@ -79,7 +79,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
     setStep(1);
   };
 
-  const handleInstallMissing = () => {
+  const handleInstallMissing = async () => {
     setIsInstalling(true);
     setProgress(0);
     
@@ -244,7 +244,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
                 <li>Use ROMs and ISOs only for games you legally own</li>
                 <li>Backup your save files regularly</li>
                 <li>Check for RetroNexus updates to get the latest features</li>
-                <li>Adjust graphics settings for optimal performance</li>
+                <li>Adjust graphics settings in the BIOS for optimal performance</li>
               </ul>
             </div>
           </div>

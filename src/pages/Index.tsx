@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Tabs, 
@@ -9,16 +10,15 @@ import EmulatorHeader from '@/components/EmulatorHeader';
 import GameCard from '@/components/GameCard';
 import SystemFilters from '@/components/SystemFilters';
 import FileUpload from '@/components/FileUpload';
-import GraphicsSettings from '@/components/GraphicsSettings';
 import GameDetails from '@/components/GameDetails';
 import EmulatorPlayScreen from '@/components/EmulatorPlayScreen';
+import CustomizableBIOS from '@/components/CustomizableBIOS';
+import EmulatorSetupWizard from '@/components/EmulatorSetupWizard';
 import { EmulatorSystem, Game, preInstalledGames, systemRequirements, setupRequiredFiles } from '@/data/gameData';
 import { Button } from '@/components/ui/button';
 import { 
   GamepadIcon, 
   Upload, 
-  Settings, 
-  MonitorIcon, 
   HardDriveIcon, 
   InfoIcon, 
   Search 
@@ -32,25 +32,8 @@ const Index = () => {
   const [showGameDetails, setShowGameDetails] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [playingGame, setPlayingGame] = useState<Game | null>(null);
-  const [biosFadeOut, setBiosFadeOut] = useState(false);
-  
-  useEffect(() => {
-    // Handle BIOS screen fade out after 3 seconds
-    const timer = setTimeout(() => {
-      setBiosFadeOut(true);
-    }, 3000);
-
-    // Handle any key press to dismiss BIOS screen
-    const handleKeyPress = () => {
-      setBiosFadeOut(true);
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, []);
+  const [showBIOS, setShowBIOS] = useState(true);
+  const [setupWizardOpen, setSetupWizardOpen] = useState(false);
   
   const handlePlayGame = (game: Game) => {
     setPlayingGame(game);
@@ -72,6 +55,14 @@ const Index = () => {
     setPlayingGame(null);
   };
   
+  const handleBIOSComplete = () => {
+    setShowBIOS(false);
+  };
+  
+  const handleOpenSetupWizard = () => {
+    setSetupWizardOpen(true);
+  };
+  
   const filteredGames = preInstalledGames.filter(game => {
     const matchesSystem = selectedSystem === 'all' || game.system === selectedSystem;
     const matchesSearch = searchQuery === '' || 
@@ -83,6 +74,11 @@ const Index = () => {
   
   return (
     <div className="min-h-screen bg-emulator-bg-dark text-emulator-text-primary flex flex-col">
+      {/* Show BIOS during initialization */}
+      {showBIOS && (
+        <CustomizableBIOS onComplete={handleBIOSComplete} />
+      )}
+      
       <EmulatorHeader />
       
       <main className="flex-1 container mx-auto p-4 lg:p-6">
@@ -103,14 +99,6 @@ const Index = () => {
               >
                 <Upload size={18} className="mr-2" />
                 Upload Files
-              </TabsTrigger>
-              
-              <TabsTrigger 
-                value="settings"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-emulator-accent data-[state=active]:text-emulator-accent data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-4 py-2"
-              >
-                <Settings size={18} className="mr-2" />
-                Graphics Settings
               </TabsTrigger>
               
               <TabsTrigger 
@@ -137,6 +125,7 @@ const Index = () => {
               
               <Button 
                 className="bg-emulator-button border border-emulator-highlight hover:bg-emulator-highlight"
+                onClick={handleOpenSetupWizard}
               >
                 <InfoIcon size={18} className="mr-2" />
                 Setup Wizard
@@ -155,6 +144,7 @@ const Index = () => {
                     key={game.id} 
                     game={game}
                     onPlay={handlePlayGame}
+                    onClick={() => handleGameClick(game)}
                   />
                 ))
               ) : (
@@ -212,21 +202,6 @@ const Index = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="settings">
-            <div className="max-w-3xl mx-auto">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold mb-2">Graphics Settings</h2>
-                <p className="text-emulator-text-secondary">
-                  Customize the visual appearance of your emulated games. Higher settings may require more powerful hardware.
-                </p>
-              </div>
-              
-              <div className="bg-emulator-card-bg border border-emulator-highlight rounded-lg overflow-hidden">
-                <GraphicsSettings />
-              </div>
-            </div>
-          </TabsContent>
-          
           <TabsContent value="system">
             <div className="max-w-3xl mx-auto">
               <div className="mb-6">
@@ -240,7 +215,7 @@ const Index = () => {
                 <div className="bg-emulator-card-bg border border-emulator-highlight rounded-lg overflow-hidden">
                   <div className="bg-emulator-highlight/20 p-3 border-b border-emulator-highlight flex justify-between items-center">
                     <h3 className="font-bold">System Requirements</h3>
-                    <MonitorIcon size={18} className="text-emulator-text-secondary" />
+                    <HardDriveIcon size={18} className="text-emulator-text-secondary" />
                   </div>
                   
                   <div className="p-4">
@@ -294,6 +269,7 @@ const Index = () => {
                       
                       <Button 
                         className="w-full bg-emulator-button border border-emulator-highlight hover:bg-emulator-highlight"
+                        onClick={handleOpenSetupWizard}
                       >
                         <InfoIcon size={18} className="mr-2" />
                         Run Setup Wizard
@@ -329,6 +305,11 @@ const Index = () => {
         game={playingGame}
         open={!!playingGame}
         onClose={handleClosePlayScreen}
+      />
+
+      <EmulatorSetupWizard
+        open={setupWizardOpen}
+        onOpenChange={setSetupWizardOpen}
       />
     </div>
   );
