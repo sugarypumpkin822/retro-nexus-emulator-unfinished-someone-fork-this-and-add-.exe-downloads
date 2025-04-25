@@ -144,7 +144,7 @@ const Index = () => {
                     key={game.id} 
                     game={game}
                     onPlay={handlePlayGame}
-                    onClick={() => handleGameClick(game)}
+                    onClick={handleGameClick}
                   />
                 ))
               ) : (

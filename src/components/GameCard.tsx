@@ -3,17 +3,24 @@ import React from 'react';
 import { Game, SYSTEM_NAMES, SYSTEM_ICONS } from '@/data/gameData';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Download, Settings, Info } from 'lucide-react';
+import { Play, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface GameCardProps {
   game: Game;
   onPlay: (game: Game) => void;
+  onClick?: (game: Game) => void; // Make onClick optional
 }
 
-const GameCard: React.FC<GameCardProps> = ({ game, onPlay }) => {
+const GameCard: React.FC<GameCardProps> = ({ game, onPlay, onClick }) => {
   const handlePlay = () => {
     onPlay(game);
+  };
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick(game);
+    }
   };
 
   const handleInfo = () => {
@@ -24,7 +31,10 @@ const GameCard: React.FC<GameCardProps> = ({ game, onPlay }) => {
   };
 
   return (
-    <Card className="w-full bg-emulator-card-bg border border-emulator-highlight overflow-hidden transition-all hover:border-emulator-accent hover:scale-[1.02] hover:z-10 relative group">
+    <Card 
+      className="w-full bg-emulator-card-bg border border-emulator-highlight overflow-hidden transition-all hover:border-emulator-accent hover:scale-[1.02] hover:z-10 relative group"
+      onClick={handleClick}
+    >
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-50 group-hover:opacity-70 transition-opacity z-10"></div>
       
       <div className="relative h-48">
@@ -51,7 +61,10 @@ const GameCard: React.FC<GameCardProps> = ({ game, onPlay }) => {
         
         <div className="flex justify-between items-center">
           <Button 
-            onClick={handlePlay} 
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePlay();
+            }} 
             size="sm" 
             className="bg-gradient-to-r from-emulator-accent to-emulator-accent-secondary text-black hover:from-emulator-accent-secondary hover:to-emulator-accent"
           >
@@ -61,7 +74,10 @@ const GameCard: React.FC<GameCardProps> = ({ game, onPlay }) => {
           
           <div className="flex gap-1">
             <Button 
-              onClick={handleInfo} 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInfo();
+              }} 
               size="sm" 
               variant="outline" 
               className="bg-emulator-button border-emulator-highlight p-1 h-8 w-8"
