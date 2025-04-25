@@ -158,7 +158,9 @@ export const detectSystemHardware = (): Promise<SystemScanResults> => {
         // Try to get WebGL info to estimate GPU capability
         try {
           const canvas = document.createElement('canvas');
-          const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+          // Use explicit cast to WebGLRenderingContext
+          const gl = canvas.getContext('webgl') as WebGLRenderingContext || 
+                    canvas.getContext('experimental-webgl') as WebGLRenderingContext;
           
           if (gl) {
             const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');

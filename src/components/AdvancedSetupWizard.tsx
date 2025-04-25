@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   detectSystemHardware, 
@@ -50,6 +49,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Slider } from "@/components/ui/slider";
 
 interface AdvancedSetupWizardProps {
   open: boolean;
@@ -437,7 +437,7 @@ const AdvancedSetupWizard: React.FC<AdvancedSetupWizardProps> = ({
                     </p>
                     <Button 
                       onClick={startHardwareScan}
-                      className="bg-emulator-accent text-black hover:bg-emulator-accent/80"
+                      className="bg-emulator-accent text-black hover:bg-emulator-accent"
                     >
                       <Cpu size={16} className="mr-2" />
                       Start System Scan
