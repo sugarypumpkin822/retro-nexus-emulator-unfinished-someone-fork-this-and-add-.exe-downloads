@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { setupRequiredFiles, systemRequirements } from '@/data/gameData';
 import { Button } from '@/components/ui/button';
-import { Check, X, Download, AlertTriangle, Loader2 } from 'lucide-react';
+import { Check, X, Download, AlertTriangle, Loader2, FileDown, Shield, Cpu } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from 'sonner';
+import { createExecutablePackage, windowsRequirements } from '@/utils/setupUtils';
 
 interface EmulatorSetupWizardProps {
   open: boolean;
@@ -26,8 +27,10 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
   const [step, setStep] = useState(1);
   const [isChecking, setIsChecking] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [isGeneratingExe, setIsGeneratingExe] = useState(false);
   const [progress, setProgress] = useState(0);
   const [missingFiles, setMissingFiles] = useState<string[]>([]);
+  const [saveLocation, setSaveLocation] = useState<string>("");
   
   const totalSteps = 3;
 
@@ -95,6 +98,56 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
         return prev + 5;
       });
     }, 150);
+  };
+
+  // Handle Windows executable generation
+  const handleGenerateExe = async () => {
+    setIsGeneratingExe(true);
+    setProgress(0);
+    
+    try {
+      // Start progress animation
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 95) {
+            return 95; // Hold at 95% until actual completion
+          }
+          return prev + (95 - prev) * 0.1;
+        });
+      }, 100);
+      
+      // Generate the executable package
+      const executableBlob = await createExecutablePackage();
+      
+      // Complete the progress
+      clearInterval(progressInterval);
+      setProgress(100);
+      
+      // Create download link
+      const downloadUrl = URL.createObjectURL(executableBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = 'RetroNexus-Setup.zip';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+      // Clean up the URL object
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 60000);
+      
+      toast.success('Windows installer package created!', {
+        description: 'Your RetroNexus Setup.zip file is ready.'
+      });
+      
+      setSaveLocation("RetroNexus-Setup.zip");
+      setIsGeneratingExe(false);
+    } catch (error) {
+      console.error('Error generating Windows executable:', error);
+      toast.error('Failed to create Windows package', {
+        description: 'An error occurred while creating the setup package.'
+      });
+      setIsGeneratingExe(false);
+    }
   };
   
   // Helper to render the current step content
@@ -189,32 +242,126 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
         return (
           <div className="space-y-4">
             <p className="text-emulator-text-secondary">
-              This is the minimum recommended hardware to run RetroNexus Emulator. Advanced systems may require more powerful hardware.
+              This is the minimum recommended hardware to run RetroNexus Emulator. The Windows installer will verify these requirements.
             </p>
             
             <div className="border border-emulator-highlight rounded-lg overflow-hidden">
               <div className="bg-emulator-highlight/20 p-3 border-b border-emulator-highlight">
-                <h4 className="font-bold">System Requirements</h4>
+                <h4 className="font-bold">Windows System Requirements</h4>
               </div>
               
               <table className="min-w-full">
                 <thead>
                   <tr className="bg-emulator-highlight/30 text-xs">
                     <th className="text-left p-3">Component</th>
-                    <th className="text-left p-3">Minimum</th>
-                    <th className="text-left p-3">Recommended</th>
+                    <th className="text-left p-3">Minimum Requirements</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-emulator-highlight">
-                  {systemRequirements.map((req, index) => (
-                    <tr key={index} className="text-sm">
-                      <td className="p-3 font-medium">{req.component}</td>
-                      <td className="p-3 text-emulator-text-secondary">{req.minimum}</td>
-                      <td className="p-3 text-emulator-success">{req.recommended}</td>
-                    </tr>
-                  ))}
+                  <tr className="text-sm">
+                    <td className="p-3 font-medium">Operating System</td>
+                    <td className="p-3 text-emulator-text-secondary">{windowsRequirements.os}</td>
+                  </tr>
+                  <tr className="text-sm">
+                    <td className="p-3 font-medium">Processor</td>
+                    <td className="p-3 text-emulator-text-secondary">{windowsRequirements.processor}</td>
+                  </tr>
+                  <tr className="text-sm">
+                    <td className="p-3 font-medium">Memory</td>
+                    <td className="p-3 text-emulator-text-secondary">{windowsRequirements.memory}</td>
+                  </tr>
+                  <tr className="text-sm">
+                    <td className="p-3 font-medium">Graphics</td>
+                    <td className="p-3 text-emulator-text-secondary">{windowsRequirements.graphics}</td>
+                  </tr>
+                  <tr className="text-sm">
+                    <td className="p-3 font-medium">DirectX</td>
+                    <td className="p-3 text-emulator-text-secondary">{windowsRequirements.directX}</td>
+                  </tr>
+                  <tr className="text-sm">
+                    <td className="p-3 font-medium">Storage</td>
+                    <td className="p-3 text-emulator-text-secondary">{windowsRequirements.storage}</td>
+                  </tr>
                 </tbody>
               </table>
+              
+              <div className="p-3 bg-emulator-highlight/20 text-sm text-emulator-text-secondary">
+                <p>{windowsRequirements.additionalNotes}</p>
+              </div>
+            </div>
+            
+            <div className="border border-emulator-highlight rounded-lg overflow-hidden">
+              <div className="bg-emulator-highlight/20 p-3 border-b border-emulator-highlight">
+                <h4 className="font-bold">Windows Installer Package</h4>
+              </div>
+              
+              <div className="p-4 space-y-4">
+                <p className="text-sm text-emulator-text-secondary">
+                  Generate a Windows-compatible installer package that includes:
+                </p>
+                
+                <ul className="space-y-1 text-sm">
+                  <li className="flex items-center">
+                    <Check className="mr-2 text-emulator-accent" size={14} />
+                    <span>Signed .exe with Windows compatibility manifest</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="mr-2 text-emulator-accent" size={14} />
+                    <span>Visual C++ Redistributable dependencies</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="mr-2 text-emulator-accent" size={14} />
+                    <span>DirectX 12 runtime installer</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="mr-2 text-emulator-accent" size={14} />
+                    <span>Hardware verification during installation</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="mr-2 text-emulator-accent" size={14} />
+                    <span>Windows registry integration for easy uninstall</span>
+                  </li>
+                </ul>
+                
+                <Button 
+                  onClick={handleGenerateExe}
+                  disabled={isGeneratingExe}
+                  className="w-full bg-emulator-accent text-black hover:bg-emulator-accent/80"
+                >
+                  {isGeneratingExe ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating Windows Package... {progress}%
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="mr-2" size={16} />
+                      Generate Windows Installer Package
+                    </>
+                  )}
+                </Button>
+                
+                {isGeneratingExe && (
+                  <>
+                    <Progress value={progress} className="h-2 progress-bar-animate" />
+                    <p className="text-xs text-center text-emulator-text-secondary">
+                      Building signed .exe and packaging dependencies...
+                    </p>
+                  </>
+                )}
+                
+                {saveLocation && (
+                  <div className="p-3 bg-emulator-success/20 rounded-md text-sm">
+                    <div className="flex items-center text-emulator-success">
+                      <Check className="mr-2" size={16} />
+                      <span className="font-medium">Package created successfully!</span>
+                    </div>
+                    <p className="mt-1 text-emulator-text-secondary">
+                      Saved as: {saveLocation}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -223,29 +370,41 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
         return (
           <div className="space-y-4">
             <p className="text-emulator-text-secondary">
-              RetroNexus Emulator has been successfully configured and is ready to use!
+              RetroNexus Emulator has been successfully configured as a Windows-compatible application!
             </p>
             
             <div className="p-6 text-center">
               <div className="inline-block p-4 mb-4 rounded-full bg-emulator-accent/20 text-emulator-accent animate-pulse-glow">
-                <Check size={40} />
+                <Shield size={40} />
               </div>
-              <h3 className="text-xl font-bold mb-2">Setup Complete</h3>
+              <h3 className="text-xl font-bold mb-2">Windows Setup Complete</h3>
               <p className="text-emulator-text-secondary">
-                You can now enjoy your games on multiple emulated platforms.
+                Your Windows-compatible installer package is ready.
                 <br />
-                Upload your ROM files or try one of the pre-installed games.
+                The package includes all necessary dependencies and compatibility checks.
               </p>
             </div>
             
             <div className="bg-emulator-highlight/20 p-4 rounded-lg border border-emulator-highlight text-sm">
-              <p className="font-bold mb-2">Remember:</p>
+              <p className="font-bold mb-2">Windows Installation Notes:</p>
               <ul className="list-disc pl-5 space-y-1 text-emulator-text-secondary">
-                <li>Use ROMs and ISOs only for games you legally own</li>
-                <li>Backup your save files regularly</li>
-                <li>Check for RetroNexus updates to get the latest features</li>
-                <li>Adjust graphics settings in the BIOS for optimal performance</li>
+                <li>Run the installer with administrative privileges</li>
+                <li>Accept the User Account Control (UAC) prompt when prompted</li>
+                <li>Visual C++ and DirectX runtimes will be installed if needed</li>
+                <li>The setup wizard will verify hardware meets minimum requirements</li>
+                <li>During first boot, press DEL, F2, or F12 to access BIOS settings</li>
               </ul>
+            </div>
+            
+            <div className="flex items-center justify-center p-4">
+              <Button 
+                onClick={handleGenerateExe}
+                className="bg-emulator-accent text-black hover:bg-emulator-accent/80"
+                disabled={isGeneratingExe}
+              >
+                <FileDown className="mr-2" size={16} />
+                Download Windows Package Again
+              </Button>
             </div>
           </div>
         );
@@ -260,10 +419,10 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
       <DialogContent className="sm:max-w-[600px] bg-emulator-card-bg border-emulator-highlight">
         <DialogHeader>
           <DialogTitle className="text-xl font-retro tracking-wide glow-text">
-            RetroNexus Setup Wizard
+            RetroNexus Windows Setup Wizard
           </DialogTitle>
           <DialogDescription>
-            Step {step} of {totalSteps}: {step === 1 ? 'System Check' : step === 2 ? 'Requirements' : 'Complete'}
+            Step {step} of {totalSteps}: {step === 1 ? 'System Check' : step === 2 ? 'Windows Requirements' : 'Complete'}
           </DialogDescription>
         </DialogHeader>
         
@@ -277,7 +436,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
               onClick={handleBack} 
               variant="outline" 
               className="bg-emulator-button border-emulator-highlight"
-              disabled={isChecking || isInstalling}
+              disabled={isChecking || isInstalling || isGeneratingExe}
             >
               Back
             </Button>
@@ -285,7 +444,9 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
           
           <Button 
             onClick={step === totalSteps ? handleComplete : handleNext}
-            disabled={(step === 1 && (isChecking || (missingFiles.length > 0 && !isInstalling))) || isInstalling}
+            disabled={(step === 1 && (isChecking || (missingFiles.length > 0 && !isInstalling))) || 
+                     (step === 2 && isGeneratingExe && !saveLocation) ||
+                     isInstalling}
             className={
               step === totalSteps 
                 ? "bg-emulator-success text-black hover:bg-emulator-success/80" 
