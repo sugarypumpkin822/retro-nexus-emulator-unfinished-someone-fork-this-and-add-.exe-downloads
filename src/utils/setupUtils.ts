@@ -214,9 +214,13 @@ B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
   </trustInfo>
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
+      <!-- Windows 11 -->
       <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+      <!-- Windows 10 -->
       <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}"/>
+      <!-- Windows 8.1 -->
       <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"/>
+      <!-- Windows 8 -->
       <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/>
     </application>
   </compatibility>
@@ -251,6 +255,17 @@ KERNEL32.dll:
   GetLogicalDriveStringsW
   GetDriveTypeW
   GetDiskFreeSpaceExW
+  FindFirstFileW
+  FindNextFileW
+  FindClose
+  CreateProcessW
+  TerminateProcess
+  WaitForSingleObject
+  GetExitCodeProcess
+  GetModuleHandleW
+  GetModuleFileNameW
+  SetCurrentDirectoryW
+  GetCurrentDirectoryW
 
 USER32.dll:
   MessageBoxW
@@ -263,7 +278,15 @@ USER32.dll:
   LoadImageW
   LoadIconW
   LoadCursorW
-  
+  SetWindowTextW
+  GetWindowTextW
+  SendMessageW
+  PostMessageW
+  GetDlgItem
+  DestroyWindow
+  GetDesktopWindow
+  GetWindowRect
+
 ADVAPI32.dll:
   RegCreateKeyExW
   RegOpenKeyExW
@@ -272,6 +295,12 @@ ADVAPI32.dll:
   RegDeleteKeyW
   RegCloseKey
   InitiateSystemShutdownExW
+  RegEnumKeyExW
+  RegEnumValueW
+  GetTokenInformation
+  OpenProcessToken
+  LookupPrivilegeValueW
+  AdjustTokenPrivileges
   
 SHELL32.dll:
   ShellExecuteW
@@ -279,145 +308,474 @@ SHELL32.dll:
   SHFileOperationW
   SHCreateDirectoryExW
   SHGetKnownFolderPath
+  SHChangeNotify
+  SHGetSpecialFolderPathW
+  ShellAboutW
+  ExtractIconW
+  
+SHLWAPI.dll:
+  PathFileExistsW
+  PathIsDirectoryW
+  PathFindExtensionW
+  PathRemoveFileSpecW
+  PathRenameExtensionW
+  PathCombineW
+  PathAppendW
+  PathIsRelativeW
+  
+VERSION.dll:
+  GetFileVersionInfoSizeW
+  GetFileVersionInfoW
+  VerQueryValueW
 
 [CODE_SECTION]
 // Main entry point and initialization
-55 8B EC 83 EC 28 53 56 57 68 00 00 40 00 E8
-push ebp
-mov ebp, esp
-sub esp, 40
-push ebx
-push esi
-push edi
-
-// Initialize global state
-function InitializeInstaller() {
-  // Load configuration
-  LoadInstallerConfig();
+function WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow) {
+  // Parse command line arguments
+  const args = ParseCommandLine(lpCmdLine);
   
-  // Check admin rights
-  if (!CheckAdminPrivileges()) {
-    ShowError("Administrator privileges required");
-    return ERROR_ELEVATION_REQUIRED;
+  // Set up exception handler
+  SetUnhandledExceptionFilter(CustomExceptionHandler);
+  
+  // Create and show installer UI
+  if (!args.silent) {
+    CreateInstallerWindow(hInstance, nCmdShow);
+    InitializeUI();
+    return RunMessageLoop();
+  } else {
+    return RunSilentInstallation(args);
   }
-  
-  // Verify system requirements
-  if (!VerifySystemRequirements()) {
-    ShowError("System does not meet minimum requirements");
-    return ERROR_REQUIREMENTS_NOT_MET;
-  }
-  
-  return SUCCESS;
 }
 
-// File system operations
+// System requirement checking with detailed hardware analysis
+function VerifySystemRequirements() {
+  // Check OS version
+  if (!IsWindows10OrNewer()) {
+    LogError("OS requirement not met: Windows 10 or newer required");
+    return false;
+  }
+  
+  // Check CPU
+  const cpuInfo = GetCPUInfo();
+  if (cpuInfo.cores < 6 || cpuInfo.frequency < 3.0) {
+    LogWarning("CPU below recommended specs: " + cpuInfo.name);
+    // Continue with warning
+  }
+  
+  // Check RAM
+  const memInfo = GetSystemMemory();
+  if (memInfo.totalPhysical < 16 * 1024 * 1024 * 1024) {
+    LogWarning("RAM below recommended specs: " + FormatMemorySize(memInfo.totalPhysical));
+    // Continue with warning
+  }
+  
+  // Check GPU
+  const gpuInfo = GetGPUInfo();
+  if (!IsGPUCompatible(gpuInfo)) {
+    LogError("GPU requirement not met: RTX 4060/RX 7600 or better required");
+    return false;
+  }
+  
+  // Check DirectX
+  if (!CheckDirectXVersion(12)) {
+    LogWarning("DirectX 12 not detected, will be installed");
+  }
+  
+  // Check free disk space
+  const installPath = GetInstallPath();
+  if (!CheckDiskSpace(installPath, 50 * 1024 * 1024 * 1024)) {
+    LogError("Insufficient disk space: 50 GB required");
+    return false;
+  }
+
+  return true;
+}
+
+// Advanced file system operations with error recovery
 function CreateInstallationDirectories() {
+  const basePath = GetInstallPath();
   const directories = [
-    "%INSTALLDIR%\\Games\\ROMs",
-    "%INSTALLDIR%\\Games\\ISOs",
-    "%INSTALLDIR%\\SaveStates",
-    "%INSTALLDIR%\\SaveData",
-    "%INSTALLDIR%\\Screenshots",
-    "%INSTALLDIR%\\Recordings",
-    "%INSTALLDIR%\\Shaders",
-    "%INSTALLDIR%\\Textures"
+    "Games\\ROMs",
+    "Games\\ISOs",
+    "SaveStates",
+    "SaveData",
+    "Screenshots",
+    "Recordings",
+    "Shaders",
+    "Textures",
+    "BIOS",
+    "Logs",
+    "Config",
+    "Cache",
+    "Updates"
   ];
   
   for (const dir of directories) {
-    CreateDirectory(ExpandPath(dir));
+    const fullPath = PathCombine(basePath, dir);
+    if (!PathFileExists(fullPath)) {
+      if (!CreateDirectoryRecursive(fullPath)) {
+        LogError("Failed to create directory: " + fullPath);
+        throw new Error("Failed to create installation directories");
+      }
+    }
+  }
+  
+  // Set appropriate permissions
+  SetDirectoryPermissions(basePath);
+}
+
+// Robust file extraction with verification
+function ExtractFiles() {
+  try {
+    // Extract core DLLs
+    ExtractCoreFiles();
+    
+    // Extract BIOS files
+    ExtractBIOSFiles();
+    
+    // Extract configuration files
+    ExtractConfigFiles();
+    
+    // Extract shader files
+    ExtractShaderFiles();
+    
+    // Verify file integrity
+    if (!VerifyFileIntegrity()) {
+      throw new Error("File integrity check failed");
+    }
+  } catch (error) {
+    LogError("Extraction error: " + error.message);
+    throw error;
   }
 }
 
-// DLL Management
-function LoadCoreDLLs() {
-  // Load core DLLs in correct order
+// Dynamic DLL loading with dependency resolution
+function LoadAndInitializeDLLs() {
+  // First pass: load all DLLs
   const dllLoadOrder = [
-    "RetroNexusCore.dll",
-    "EmulationEngine.dll", 
-    "HardwareAcceleration.dll",
-    "InputManager.dll",
-    "AudioEngine.dll"
+    { name: "RetroNexusCore.dll", required: true },
+    { name: "EmulationEngine.dll", required: true },
+    { name: "HardwareAcceleration.dll", required: true },
+    { name: "InputManager.dll", required: true },
+    { name: "AudioEngine.dll", required: true },
+    { name: "NetworkServices.dll", required: true },
+    { name: "PhysicsEngine.dll", required: true },
+    { name: "ShaderCompiler.dll", required: true },
+    { name: "TextureProcessor.dll", required: true },
+    { name: "SaveStateManager.dll", required: true },
+    { name: "RenderingUtils.dll", required: true },
+    { name: "EnhancedGraphics.dll", required: false },
+    { name: "AIUpscaling.dll", required: false },
+    { name: "RayTracingSupport.dll", required: false },
+    { name: "VirtualSurroundAudio.dll", required: false }
   ];
+  
+  const loadedModules = new Map();
   
   for (const dll of dllLoadOrder) {
-    const hModule = LoadLibrary(dll);
-    if (!hModule) {
-      return ERROR_DLL_LOAD_FAILED;
+    try {
+      const hModule = LoadLibrary(PathCombine(GetInstallPath(), dll.name));
+      if (!hModule) {
+        const error = GetLastError();
+        if (dll.required) {
+          throw new Error(\`Failed to load \${dll.name}: Error \${error}\`);
+        } else {
+          LogWarning(\`Optional DLL \${dll.name} not loaded: Error \${error}\`);
+        }
+      } else {
+        loadedModules.set(dll.name, hModule);
+      }
+    } catch (error) {
+      if (dll.required) {
+        throw error;
+      } else {
+        LogWarning(\`Failed to load optional DLL \${dll.name}: \${error.message}\`);
+      }
     }
-    InitializeDLL(hModule);
   }
   
-  return SUCCESS;
+  // Second pass: initialize DLLs in order
+  for (const [name, hModule] of loadedModules.entries()) {
+    const initFunc = GetProcAddress(hModule, "Initialize");
+    if (initFunc) {
+      const result = initFunc();
+      if (result !== 0) {
+        LogWarning(\`DLL initialization warning for \${name}: Code \${result}\`);
+      }
+    }
+  }
+  
+  return loadedModules;
 }
 
-// Registry Configuration
+// Comprehensive registry configuration
 function ConfigureRegistry() {
-  // Create main registry keys
-  CreateRegistryKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\RetroNexus");
+  // Main application keys
+  const baseKey = "SOFTWARE\\RetroNexus";
+  CreateRegistryKey(HKEY_LOCAL_MACHINE, baseKey);
+  SetRegistryValue(HKEY_LOCAL_MACHINE, baseKey, "InstallPath", REG_SZ, GetInstallPath());
+  SetRegistryValue(HKEY_LOCAL_MACHINE, baseKey, "Version", REG_SZ, "1.2.5.482");
+  SetRegistryValue(HKEY_LOCAL_MACHINE, baseKey, "InstallDate", REG_DWORD, Math.floor(Date.now() / 1000));
   
-  // Register file extensions
-  const extensions = [
-    ".nes", ".snes", ".n64", ".iso", ".gba",
-    ".nds", ".psp", ".wii", ".gcm", ".bin"
+  // File associations
+  const fileExtensions = [
+    { ext: ".nes", desc: "NES ROM File", icon: "icons\\nes.ico" },
+    { ext: ".snes", desc: "SNES ROM File", icon: "icons\\snes.ico" },
+    { ext: ".n64", desc: "Nintendo 64 ROM File", icon: "icons\\n64.ico" },
+    { ext: ".z64", desc: "Nintendo 64 ROM File", icon: "icons\\n64.ico" },
+    { ext: ".v64", desc: "Nintendo 64 ROM File", icon: "icons\\n64.ico" },
+    { ext: ".iso", desc: "Disc Image File", icon: "icons\\disc.ico" },
+    { ext: ".cue", desc: "Disc Cue Sheet", icon: "icons\\disc.ico" },
+    { ext: ".gba", desc: "Game Boy Advance ROM", icon: "icons\\gba.ico" },
+    { ext: ".nds", desc: "Nintendo DS ROM", icon: "icons\\nds.ico" },
+    { ext: ".psp", desc: "PlayStation Portable ISO", icon: "icons\\psp.ico" },
+    { ext: ".wii", desc: "Wii ROM File", icon: "icons\\wii.ico" },
+    { ext: ".gcm", desc: "GameCube ROM File", icon: "icons\\gcm.ico" },
+    { ext: ".bin", desc: "Binary ROM File", icon: "icons\\bin.ico" },
+    { ext: ".smd", desc: "Genesis/MegaDrive ROM", icon: "icons\\genesis.ico" },
+    { ext: ".32x", desc: "Sega 32X ROM File", icon: "icons\\32x.ico" },
+    { ext: ".gbc", desc: "Game Boy Color ROM", icon: "icons\\gbc.ico" },
+    { ext: ".gb", desc: "Game Boy ROM", icon: "icons\\gb.ico" },
+    { ext: ".ws", desc: "WonderSwan ROM", icon: "icons\\ws.ico" }
   ];
   
-  for (const ext of extensions) {
-    RegisterFileExtension(ext, "RetroNexus.Emulator");
+  for (const fileType of fileExtensions) {
+    RegisterFileExtension(fileType.ext, "RetroNexus.ROM", fileType.desc, 
+                        PathCombine(GetInstallPath(), fileType.icon));
   }
   
-  // Set up uninstall information
-  SetupUninstallInfo();
+  // Save state associations
+  RegisterFileExtension(".rnsav", "RetroNexus.SaveState", "RetroNexus Save State", 
+                      PathCombine(GetInstallPath(), "icons\\savestate.ico"));
+  
+  // Context menu integration
+  AddContextMenuItems();
+  
+  // Set up environment variables
+  SetEnvironmentVariables();
+  
+  // Configure uninstall information
+  SetUpUninstallInfo();
+  
+  // Register COM components
+  if (!RegisterCOMComponents()) {
+    LogWarning("Failed to register some COM components");
+  }
+  
+  // Notify shell of changes
+  SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, null, null);
 }
 
-// Error handling and cleanup
-function Cleanup() {
-  UnloadAllDLLs();
-  CloseAllHandles();
+// Advanced shortcut creation
+function CreateShortcuts() {
+  const exePath = PathCombine(GetInstallPath(), "RetroNexus.exe");
+  const iconPath = PathCombine(GetInstallPath(), "RetroNexus.ico");
+  
+  // Desktop shortcuts
+  CreateShortcut(GetDesktopPath(), "RetroNexus Emulator", exePath, "", iconPath, 0);
+  
+  // Start menu shortcuts
+  const startMenuPath = PathCombine(GetStartMenuPath(), "RetroNexus");
+  CreateDirectory(startMenuPath);
+  
+  // Main shortcut
+  CreateShortcut(startMenuPath, "RetroNexus Emulator", exePath, "", iconPath, 0);
+  
+  // Additional shortcuts
+  CreateShortcut(startMenuPath, "ROM Browser", exePath, "--browser", iconPath, 1);
+  CreateShortcut(startMenuPath, "Settings", exePath, "--settings", iconPath, 2);
+  CreateShortcut(startMenuPath, "Documentation", PathCombine(GetInstallPath(), "Docs\\index.html"), "", "", 0);
+  CreateShortcut(startMenuPath, "Uninstall RetroNexus", PathCombine(GetInstallPath(), "uninstall.exe"), "", "", 0);
+  
+  // Quick Launch (if available)
+  const quickLaunchPath = GetQuickLaunchPath();
+  if (quickLaunchPath) {
+    CreateShortcut(quickLaunchPath, "RetroNexus", exePath, "", iconPath, 0);
+  }
+}
+
+// Robust error handling with diagnostics
+function CustomExceptionHandler(exceptionInfo) {
+  const exceptionCode = exceptionInfo.ExceptionRecord.ExceptionCode;
+  const exceptionAddress = exceptionInfo.ExceptionRecord.ExceptionAddress;
+  const moduleInfo = GetModuleForAddress(exceptionAddress);
+  
+  LogError(\`Unhandled exception \${FormatHex(exceptionCode)} at \${FormatHex(exceptionAddress)}\`);
+  if (moduleInfo) {
+    LogError(\`In module \${moduleInfo.name} +\${FormatHex(exceptionAddress - moduleInfo.baseAddress)}\`);
+  }
+  
+  // Create crash dump
+  CreateMiniDump(exceptionInfo);
+  
+  // Show error dialog
+  if (!IsRunningNonInteractive()) {
+    ShowCrashDialog(exceptionCode, moduleInfo);
+  }
+  
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+
+// Comprehensive rollback for failed installation
+function RollbackInstallation(installStage) {
+  LogInfo("Rolling back installation from stage: " + installStage);
+  
+  switch(installStage) {
+    case "COMPLETE":
+    case "SHORTCUTS":
+      // Remove shortcuts
+      RemoveAllShortcuts();
+      // Fall through
+      
+    case "REGISTRY":
+      // Remove registry entries
+      RemoveRegistryEntries();
+      // Fall through
+      
+    case "DLLS":
+      // Unload DLLs
+      UnloadAllDLLs();
+      // Fall through
+      
+    case "FILES":
+      // Remove installed files
+      RemoveInstalledFiles();
+      // Fall through
+      
+    case "DIRECTORIES":
+      // Remove created directories
+      RemoveCreatedDirectories();
+      // Fall through
+      
+    case "BEGIN":
+      // Nothing to do
+      break;
+  }
+  
+  // Final cleanup
   DeleteTemporaryFiles();
   
-  if (installationFailed) {
-    RollbackChanges();
-  }
+  LogInfo("Rollback completed");
 }
 
-// Main installation sequence
+// Hardware detection and optimization
+function DetectAndConfigureHardware() {
+  // CPU detection and optimization
+  const cpuInfo = GetCPUInfo();
+  ConfigureCPUOptimizations(cpuInfo);
+  
+  // GPU detection
+  const gpuInfo = GetGPUInfo();
+  const optimalSettings = DetermineOptimalGraphicsSettings(gpuInfo);
+  SaveGraphicsConfiguration(optimalSettings);
+  
+  // Audio hardware detection
+  const audioDevices = EnumerateAudioDevices();
+  ConfigureAudioSettings(audioDevices);
+  
+  // Input device detection
+  const inputDevices = EnumerateInputDevices();
+  ConfigureDefaultControllers(inputDevices);
+  
+  // Storage performance analysis
+  const storageInfo = AnalyzeStoragePerformance(GetInstallPath());
+  ConfigureCacheSettings(storageInfo);
+  
+  LogInfo("Hardware configuration complete");
+}
+
+// Main installation sequence with progress reporting
 function InstallationSequence() {
+  let installStage = "BEGIN";
+  
   try {
-    ShowProgress("Preparing installation...", 0);
-    
-    if (InitializeInstaller() !== SUCCESS) {
+    // Initialize
+    ShowProgress("Initializing installation...", 0);
+    if (!InitializeInstaller()) {
       throw new Error("Initialization failed");
     }
     
-    ShowProgress("Creating directories...", 10);
-    CreateInstallationDirectories();
-    
-    ShowProgress("Extracting files...", 30);
-    ExtractFiles();
-    
-    ShowProgress("Installing core components...", 50);
-    if (LoadCoreDLLs() !== SUCCESS) {
-      throw new Error("Failed to load core DLLs");
+    // Verify system requirements
+    ShowProgress("Verifying system requirements...", 5);
+    if (!VerifySystemRequirements()) {
+      throw new Error("System requirements not met");
     }
     
-    ShowProgress("Configuring system...", 70);
+    // Create directories
+    ShowProgress("Creating installation directories...", 10);
+    CreateInstallationDirectories();
+    installStage = "DIRECTORIES";
+    
+    // Extract files
+    ShowProgress("Extracting files...", 20);
+    ExtractFiles();
+    installStage = "FILES";
+    
+    // Install prerequisites
+    ShowProgress("Installing prerequisites...", 40);
+    InstallPrerequisites();
+    
+    // Load and initialize DLLs
+    ShowProgress("Loading components...", 60);
+    LoadAndInitializeDLLs();
+    installStage = "DLLS";
+    
+    // Configure registry
+    ShowProgress("Configuring system integration...", 70);
     ConfigureRegistry();
+    installStage = "REGISTRY";
     
-    ShowProgress("Creating shortcuts...", 85);
+    // Create shortcuts
+    ShowProgress("Creating shortcuts...", 80);
     CreateShortcuts();
+    installStage = "SHORTCUTS";
     
+    // Detect and configure hardware
+    ShowProgress("Optimizing for your hardware...", 90);
+    DetectAndConfigureHardware();
+    
+    // Run final setup steps
     ShowProgress("Finalizing installation...", 95);
-    PerformFinalSetup();
+    FinalizingInstallation();
     
+    // Complete
     ShowProgress("Installation complete!", 100);
+    installStage = "COMPLETE";
     
+    return SUCCESS;
   } catch (error) {
+    LogError("Installation failed: " + error.message);
     ShowError("Installation failed: " + error.message);
-    Cleanup();
+    
+    // Attempt rollback
+    RollbackInstallation(installStage);
+    
     return ERROR_INSTALLATION_FAILED;
   }
+}
+
+// Final cleanup after successful installation
+function FinalizingInstallation() {
+  // Delete temporary files
+  DeleteTemporaryFiles();
   
-  return SUCCESS;
+  // Update Windows Firewall rules
+  ConfigureFirewallRules();
+  
+  // Register application with default programs
+  RegisterWithDefaultPrograms();
+  
+  // Create restore point (optional)
+  if (UserOptedForRestorePoint()) {
+    CreateSystemRestorePoint("RetroNexus Emulator Installation");
+  }
+  
+  // Send telemetry if allowed
+  if (UserAllowedTelemetry()) {
+    SendInstallationTelemetry();
+  }
+  
+  LogInfo("Installation successfully completed");
 }
 
 [RESOURCES]
@@ -452,6 +810,15 @@ BEGIN
     VALUE "Translation", 0x409, 1200
   END
 END
+
+10 RCDATA "config\\default.ini"
+11 RCDATA "config\\systems.ini"
+12 RCDATA "config\\controllers.ini"
+20 BITMAP "splash.bmp"
+30 WAVE "sounds\\startup.wav"
+31 WAVE "sounds\\complete.wav"
+40 PNG "images\\background.png"
+41 PNG "images\\logo.png"
 
 [SIGNATURE_BLOCK]
 // Digital signature (PKCS#7)
