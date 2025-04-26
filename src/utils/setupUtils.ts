@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { SystemScanResults } from './hardwareScan';
 import JSZip from 'jszip';
@@ -36,6 +35,17 @@ export const requiredSetupFiles: SetupFile[] = [
   { name: 'DreamcastSystem.bin', size: '3.8 MB', status: 'pending', progress: 0, required: true },
   { name: 'GBASystem.bin', size: '256 KB', status: 'pending', progress: 0, required: true },
   { name: 'GameCubeSystem.bin', size: '5.7 MB', status: 'pending', progress: 0, required: true },
+  { name: "PhysicsEngine.dll", size: "64.8 MB", status: "pending", progress: 0, required: true },
+  { name: "ShaderCompiler.dll", size: "43.2 MB", status: "pending", progress: 0, required: true },
+  { name: "TextureProcessor.dll", size: "38.7 MB", status: "pending", progress: 0, required: true },
+  { name: "SaveStateManager.dll", size: "22.4 MB", status: "pending", progress: 0, required: true },
+  { name: "RenderingUtils.dll", size: "56.9 MB", status: "pending", progress: 0, required: true },
+  { name: "NetworkLayer.dll", size: "34.2 MB", status: "pending", progress: 0, required: true },
+  { name: "DebugTools.dll", size: "28.6 MB", status: "pending", progress: 0, required: true },
+  { name: "MediaFoundation.dll", size: "92.3 MB", status: "pending", progress: 0, required: true },
+  { name: "WiiSystem.bin", size: "4.8 MB", status: "pending", progress: 0, required: true },
+  { name: "PSPSystem.bin", size: "3.2 MB", status: 'pending', progress: 0, required: true },
+  { name: "NDSSystem.bin", size: "1.8 MB", status: "pending", progress: 0, required: true },
 ];
 
 export const optionalSetupFiles: SetupFile[] = [
@@ -559,7 +569,84 @@ FileDescription: RetroNexus Input Management
 LegalCopyright: © 2025 RetroNexus Technologies Inc.
 ProductName: RetroNexus Emulator
 `
-        }
+        },
+        {
+          name: "PhysicsEngine.dll",
+          content: `
+// PhysicsEngine.dll - Physics Simulation Layer
+// Version: 1.2.5.482
+
+[DLL_HEADER]
+4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
+B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
+
+[EXPORTS]
+InitializePhysics
+ShutdownPhysics
+UpdatePhysicsWorld
+CreateRigidBody
+DestroyRigidBody
+ApplyForce
+SetGravity
+DetectCollisions
+ResolveContacts
+SimulateParticles
+SetPhysicsMaterial
+GetPhysicsStats
+EnableRagdoll
+DisableRagdoll
+
+[DEPENDENCIES]
+KERNEL32.dll
+RetroNexusCore.dll
+DirectXMath.dll
+vcruntime140.dll
+msvcp140.dll
+
+[VERSION_INFO]
+CompanyName: RetroNexus Technologies
+FileDescription: RetroNexus Physics Engine
+LegalCopyright: © 2025 RetroNexus Technologies Inc.
+ProductName: RetroNexus Emulator
+`
+    },
+    {
+      name: "ShaderCompiler.dll",
+      content: `
+// ShaderCompiler.dll - Real-time Shader Processing
+// Version: 1.2.5.482
+
+[DLL_HEADER]
+4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
+B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
+
+[EXPORTS]
+CompileShader
+OptimizeShader
+LoadShaderProgram
+CreateShaderCache
+ValidateShader
+GetCompilerVersion
+SetOptimizationLevel
+EnableDebugInfo
+LoadShaderLibrary
+GetShaderError
+PreprocessShader
+GenerateMipChain
+
+[DEPENDENCIES]
+d3dcompiler_47.dll
+dxil.dll
+RetroNexusCore.dll
+HardwareAcceleration.dll
+
+[VERSION_INFO]
+CompanyName: RetroNexus Technologies
+FileDescription: RetroNexus Shader Compiler
+LegalCopyright: © 2025 RetroNexus Technologies Inc.
+ProductName: RetroNexus Emulator
+`
+    }
       ];
 
       return dllFiles;
@@ -754,518 +841,3 @@ CheckDiskErrors=true
 MemoryTestLevel=basic
 GPUStressTest=false
 DialogTimeout=30
-LogSystemInfo=true
-`;
-
-      // Performance and system limits configuration
-      const performanceConfig = `
-# RetroNexus Performance Configuration
-# This file controls performance limits and optimization settings
-
-[SystemLimits]
-MaxCPUUsage=90
-MaxGPUUsage=95
-MaxRAMUsage=8192
-MaxVRAMUsage=7168
-ThermalThrottleTemp=85
-LowPowerMode=false
-BoostMode=true
-DynamicClockRates=true
-ProcessPriority=high
-IOPriority=normal
-
-[Optimizations]
-EnableThreadPooling=true
-ThreadPoolSize=16
-CacheSize=512
-TextureCacheSize=2048
-ShaderCacheSize=256
-EnableJIT=true
-JITOptimizationLevel=3
-EnableAVX=true
-EnableAVX2=true
-EnableSSE4=true
-UseHardwareEncoder=true
-EnablePrecaching=true
-PrecacheOnStartup=true
-AsyncTextureLoading=true
-DeferredRendering=true
-EnableOcclusionCulling=true
-BatchDrawCalls=true
-
-[AdvancedOptions]
-OverrideTimers=false
-UsePreciseTimers=true
-TimerResolution=1
-EnableDirectStorage=auto
-UseDLSS=auto
-UseFSR=auto
-UseXeSS=auto
-EnableFPSLimiter=true
-MaxFPS=240
-EnableFrameLimiter=true
-FrameLimiterMethod=adaptive
-PageFilePolicy=system
-DisableWindowsDefender=false
-DisableSuperFetch=false
-DisableBackgroundApps=true
-`;
-
-      return {
-        "retronexus.conf": mainConfig,
-        "bios.conf": biosConfig,
-        "performance.conf": performanceConfig
-      };
-    };
-    
-    // Create installation script files
-    const createInstallScripts = () => {
-      // Windows batch installation script
-      const batchScript = `
-@echo off
-REM RetroNexus Windows Installation Script
-REM Version 1.2.5
-REM Copyright (c) 2025 RetroNexus Technologies Inc.
-
-echo RetroNexus Emulator Installation Script
-echo --------------------------------------
-echo.
-
-REM Check for administrative privileges
-net session >nul 2>&1
-if %errorLevel% neq 0 (
-  echo ERROR: This script requires administrator privileges.
-  echo Please right-click and select "Run as administrator"
-  echo.
-  pause
-  exit /B 1
-)
-
-REM Check Windows version
-ver | find "10." > nul
-if %errorLevel% equ 0 set WIN10=1
-ver | find "11." > nul
-if %errorLevel% equ 0 set WIN11=1
-
-if not defined WIN10 (
-  if not defined WIN11 (
-    echo WARNING: RetroNexus requires Windows 10 or 11.
-    echo Your system may not be compatible.
-    echo.
-    choice /C YN /M "Continue anyway?"
-    if errorlevel 2 exit /B 1
-  )
-)
-
-REM Check for DirectX 12
-echo Checking DirectX version...
-dxdiag /t DirectXInfo.txt
-timeout /t 2 > nul
-findstr "DirectX Version: 12" DirectXInfo.txt > nul
-if %errorLevel% neq 0 (
-  echo DirectX 12 not found. Installing...
-  dxsetup.exe /silent
-) else (
-  echo DirectX 12 detected.
-)
-del DirectXInfo.txt
-
-REM Check for Visual C++ Redistributable
-echo Checking Visual C++ Redistributable...
-reg query "HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64" /v Version > nul 2>&1
-if %errorLevel% neq 0 (
-  echo Visual C++ Redistributable not found. Installing...
-  VC_redist.x64.exe /install /passive /norestart
-) else (
-  echo Visual C++ Redistributable detected.
-)
-
-REM Create installation directories
-echo Creating installation directories...
-set INSTALL_DIR=C:\\RetroNexus
-if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
-if not exist "%INSTALL_DIR%\\Games" mkdir "%INSTALL_DIR%\\Games"
-if not exist "%INSTALL_DIR%\\Games\\ROMs" mkdir "%INSTALL_DIR%\\Games\\ROMs"
-if not exist "%INSTALL_DIR%\\Games\\ISOs" mkdir "%INSTALL_DIR%\\Games\\ISOs"
-if not exist "%INSTALL_DIR%\\SaveStates" mkdir "%INSTALL_DIR%\\SaveStates"
-if not exist "%INSTALL_DIR%\\SaveData" mkdir "%INSTALL_DIR%\\SaveData"
-if not exist "%INSTALL_DIR%\\Screenshots" mkdir "%INSTALL_DIR%\\Screenshots"
-if not exist "%INSTALL_DIR%\\Recordings" mkdir "%INSTALL_DIR%\\Recordings"
-if not exist "%INSTALL_DIR%\\Shaders" mkdir "%INSTALL_DIR%\\Shaders"
-if not exist "%INSTALL_DIR%\\Textures" mkdir "%INSTALL_DIR%\\Textures"
-
-REM Copy files
-echo Copying files to %INSTALL_DIR%...
-xcopy /E /I /Y Files\\* "%INSTALL_DIR%"
-if %errorLevel% neq 0 (
-  echo Error copying files.
-  pause
-  exit /B 1
-)
-
-REM Create shortcuts
-echo Creating shortcuts...
-powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%USERPROFILE%\\Desktop\\RetroNexus.lnk');$s.TargetPath='%INSTALL_DIR%\\RetroNexus.exe';$s.IconLocation='%INSTALL_DIR%\\RetroNexus.exe,0';$s.Save()"
-powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%ProgramData%\\Microsoft\\Windows\\Start Menu\\Programs\\RetroNexus\\RetroNexus Emulator.lnk');$s.TargetPath='%INSTALL_DIR%\\RetroNexus.exe';$s.IconLocation='%INSTALL_DIR%\\RetroNexus.exe,0';$s.Save()"
-
-REM Register file associations
-echo Registering file associations...
-assoc .nes=RetroNexusROM
-assoc .snes=RetroNexusROM
-assoc .n64=RetroNexusROM
-assoc .gba=RetroNexusROM
-ftype RetroNexusROM="%INSTALL_DIR%\\RetroNexus.exe" "%%1"
-
-REM Add to registry for uninstall information
-REG ADD "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus" /v "DisplayName" /t REG_SZ /d "RetroNexus Emulator" /f
-REG ADD "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus" /v "UninstallString" /t REG_SZ /d "\"%INSTALL_DIR%\\uninstall.exe\"" /f
-REG ADD "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus" /v "DisplayIcon" /t REG_SZ /d "%INSTALL_DIR%\\RetroNexus.exe,0" /f
-REG ADD "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus" /v "Publisher" /t REG_SZ /d "RetroNexus Technologies Inc." /f
-REG ADD "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus" /v "DisplayVersion" /t REG_SZ /d "1.2.5" /f
-REG ADD "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus" /v "InstallLocation" /t REG_SZ /d "%INSTALL_DIR%" /f
-REG ADD "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus" /v "NoModify" /t REG_DWORD /d 1 /f
-REG ADD "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus" /v "NoRepair" /t REG_DWORD /d 1 /f
-
-REM Perform hardware scan
-echo Scanning system hardware...
-"%INSTALL_DIR%\\RetroNexusHardwareScan.exe" /silent /report:"%INSTALL_DIR%\\hardware_report.txt"
-
-REM Complete installation
-echo.
-echo RetroNexus Emulator has been installed successfully!
-echo Installation location: %INSTALL_DIR%
-echo.
-echo To access BIOS settings during startup, press DEL, F2, or F12
-echo when the RetroNexus logo appears.
-echo.
-
-REM Ask if the user wants to launch now
-choice /C YN /M "Launch RetroNexus now?"
-if errorlevel 1 if not errorlevel 2 start "" "%INSTALL_DIR%\\RetroNexus.exe"
-
-exit /B 0
-`;
-
-      // PowerShell installation script
-      const powershellScript = `
-# RetroNexus PowerShell Installation Script
-# Version 1.2.5
-# Copyright (c) 2025 RetroNexus Technologies Inc.
-
-$ErrorActionPreference = "Stop"
-$Host.UI.RawUI.WindowTitle = "RetroNexus Installer"
-
-Write-Host "RetroNexus Emulator Installation Script" -ForegroundColor Cyan
-Write-Host "--------------------------------------" -ForegroundColor Cyan
-Write-Host ""
-
-# Check for administrative privileges
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
-    Write-Host "ERROR: This script requires administrator privileges." -ForegroundColor Red
-    Write-Host "Please right-click and select 'Run as administrator'" -ForegroundColor Red
-    Write-Host ""
-    Read-Host "Press ENTER to exit"
-    exit 1
-}
-
-# Check Windows version
-$osVersion = [System.Environment]::OSVersion.Version
-$isWin10OrLater = ($osVersion.Major -eq 10 -and $osVersion.Build -ge 19041) -or ($osVersion.Major -gt 10)
-
-if (-not $isWin10OrLater) {
-    Write-Host "WARNING: RetroNexus requires Windows 10 (20H1) or later." -ForegroundColor Yellow
-    Write-Host "Your system may not be compatible." -ForegroundColor Yellow
-    Write-Host ""
-    $continue = Read-Host "Continue anyway? (Y/N)"
-    if ($continue -ne "Y" -and $continue -ne "y") {
-        exit 1
-    }
-}
-
-# Check system hardware
-Write-Host "Scanning system hardware..." -ForegroundColor Green
-
-# Check CPU
-$cpu = Get-WmiObject -Class Win32_Processor
-Write-Host "  CPU: $($cpu.Name)" -ForegroundColor Gray
-$cpuCompatible = $cpu.NumberOfCores -ge 6
-if (-not $cpuCompatible) {
-    Write-Host "  WARNING: CPU below recommended specifications." -ForegroundColor Yellow
-}
-
-# Check RAM
-$ram = Get-WmiObject -Class Win32_ComputerSystem
-$ramGB = [math]::Round($ram.TotalPhysicalMemory / 1GB, 2)
-Write-Host "  RAM: $ramGB GB" -ForegroundColor Gray
-$ramCompatible = $ramGB -ge 16
-if (-not $ramCompatible) {
-    Write-Host "  WARNING: RAM below recommended specifications (16GB)." -ForegroundColor Yellow
-}
-
-# Check GPU - PowerShell can't easily check GPU details, so we'll use DXDIAG
-Write-Host "  Checking GPU capabilities..." -ForegroundColor Gray
-Start-Process -FilePath "dxdiag" -ArgumentList "/t", "dxdiag_output.txt" -NoNewWindow -Wait
-$dxContent = Get-Content -Path "dxdiag_output.txt" -ErrorAction SilentlyContinue
-
-$dx12Supported = $false
-$gpuName = "Unknown"
-
-if ($dxContent) {
-    foreach ($line in $dxContent) {
-        if ($line -match "Card name:(.*)") {
-            $gpuName = $matches[1].Trim()
-        }
-        if ($line -match "DirectX 12") {
-            $dx12Supported = $true
-        }
-    }
-}
-
-Write-Host "  GPU: $gpuName" -ForegroundColor Gray
-if (-not $dx12Supported) {
-    Write-Host "  WARNING: DirectX 12 not detected." -ForegroundColor Yellow
-}
-
-# Check for DirectX 12
-Write-Host "Checking DirectX version..." -ForegroundColor Green
-if (-not $dx12Supported) {
-    Write-Host "DirectX 12 not found. Installing..." -ForegroundColor Yellow
-    & "$PSScriptRoot\\dxsetup.exe" /silent
-} else {
-    Write-Host "DirectX 12 detected." -ForegroundColor Green
-}
-
-# Remove temporary file
-Remove-Item -Path "dxdiag_output.txt" -ErrorAction SilentlyContinue
-
-# Check for Visual C++ Redistributable
-Write-Host "Checking Visual C++ Redistributable..." -ForegroundColor Green
-$vcRedistPath = "HKLM:\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64"
-$vcRedistInstalled = Test-Path $vcRedistPath
-
-if (-not $vcRedistInstalled) {
-    Write-Host "Visual C++ Redistributable not found. Installing..." -ForegroundColor Yellow
-    & "$PSScriptRoot\\VC_redist.x64.exe" /install /passive /norestart
-} else {
-    Write-Host "Visual C++ Redistributable detected." -ForegroundColor Green
-}
-
-# Create installation directories
-Write-Host "Creating installation directories..." -ForegroundColor Green
-$installDir = "C:\\RetroNexus"
-
-$directories = @(
-    "",
-    "Games",
-    "Games\\ROMs",
-    "Games\\ISOs",
-    "SaveStates",
-    "SaveData",
-    "Screenshots",
-    "Recordings", 
-    "Shaders",
-    "Textures"
-)
-
-foreach ($dir in $directories) {
-    $path = Join-Path -Path $installDir -ChildPath $dir
-    if (-not (Test-Path $path)) {
-        New-Item -Path $path -ItemType Directory | Out-Null
-    }
-}
-
-# Copy files
-Write-Host "Copying files to $installDir..." -ForegroundColor Green
-$sourceDir = Join-Path -Path $PSScriptRoot -ChildPath "Files"
-
-try {
-    Copy-Item -Path "$sourceDir\\*" -Destination $installDir -Recurse -Force
-} catch {
-    Write-Host "Error copying files: $_" -ForegroundColor Red
-    Read-Host "Press ENTER to exit"
-    exit 1
-}
-
-# Create shortcuts
-Write-Host "Creating shortcuts..." -ForegroundColor Green
-$WshShell = New-Object -ComObject WScript.Shell
-
-# Desktop shortcut
-$desktopPath = [Environment]::GetFolderPath("Desktop")
-$desktopShortcut = $WshShell.CreateShortcut("$desktopPath\\RetroNexus.lnk")
-$desktopShortcut.TargetPath = "$installDir\\RetroNexus.exe"
-$desktopShortcut.IconLocation = "$installDir\\RetroNexus.exe,0"
-$desktopShortcut.Save()
-
-# Start Menu shortcut
-$startMenuDir = "$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\RetroNexus"
-if (-not (Test-Path $startMenuDir)) {
-    New-Item -Path $startMenuDir -ItemType Directory | Out-Null
-}
-$startMenuShortcut = $WshShell.CreateShortcut("$startMenuDir\\RetroNexus Emulator.lnk")
-$startMenuShortcut.TargetPath = "$installDir\\RetroNexus.exe"
-$startMenuShortcut.IconLocation = "$installDir\\RetroNexus.exe,0"
-$startMenuShortcut.Save()
-
-# Register file associations
-Write-Host "Registering file associations..." -ForegroundColor Green
-$fileTypes = @(".nes", ".snes", ".n64", ".gba", ".iso", ".bin", ".cue", ".gcm")
-
-foreach ($ext in $fileTypes) {
-    New-Item -Path "Registry::HKEY_CLASSES_ROOT\\$ext" -Force | Out-Null
-    Set-ItemProperty -Path "Registry::HKEY_CLASSES_ROOT\\$ext" -Name "(Default)" -Value "RetroNexusROM"
-}
-
-New-Item -Path "Registry::HKEY_CLASSES_ROOT\\RetroNexusROM\\shell\\open\\command" -Force | Out-Null
-Set-ItemProperty -Path "Registry::HKEY_CLASSES_ROOT\\RetroNexusROM\\shell\\open\\command" -Name "(Default)" -Value "\\"$installDir\\RetroNexus.exe\\" \\"%1\\""
-
-# Add to registry for uninstall information
-Write-Host "Setting up uninstall information..." -ForegroundColor Green
-$uninstallPath = "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus"
-New-Item -Path $uninstallPath -Force | Out-Null
-Set-ItemProperty -Path $uninstallPath -Name "DisplayName" -Value "RetroNexus Emulator"
-Set-ItemProperty -Path $uninstallPath -Name "UninstallString" -Value "\\"$installDir\\uninstall.exe\\""
-Set-ItemProperty -Path $uninstallPath -Name "DisplayIcon" -Value "$installDir\\RetroNexus.exe,0"
-Set-ItemProperty -Path $uninstallPath -Name "Publisher" -Value "RetroNexus Technologies Inc."
-Set-ItemProperty -Path $uninstallPath -Name "DisplayVersion" -Value "1.2.5"
-Set-ItemProperty -Path $uninstallPath -Name "InstallLocation" -Value $installDir
-Set-ItemProperty -Path $uninstallPath -Name "NoModify" -Value 1
-Set-ItemProperty -Path $uninstallPath -Name "NoRepair" -Value 1
-
-# Complete installation
-Write-Host ""
-Write-Host "RetroNexus Emulator has been installed successfully!" -ForegroundColor Green
-Write-Host "Installation location: $installDir" -ForegroundColor Green
-Write-Host ""
-Write-Host "To access BIOS settings during startup, press DEL, F2, or F12" -ForegroundColor Cyan
-Write-Host "when the RetroNexus logo appears." -ForegroundColor Cyan
-Write-Host ""
-
-# Ask if the user wants to launch now
-$launchNow = Read-Host "Launch RetroNexus now? (Y/N)"
-if ($launchNow -eq "Y" -or $launchNow -eq "y") {
-    Start-Process -FilePath "$installDir\\RetroNexus.exe"
-}
-
-exit 0
-`;
-
-      return {
-        "install.bat": batchScript,
-        "install.ps1": powershellScript
-      };
-    };
-    
-    // Now let's add our text-based files to the ZIP
-    // Add executable as text file with proper description
-    zip.file("RetroNexus-Setup.txt", createWindowsExecutableText());
-    
-    // Add VC++ Redistributable file
-    zip.file("VC_redist.x64.txt", createVCRedistFile());
-    
-    // Add DirectX 12 file
-    zip.file("DirectX12_Setup.txt", createDirectX12File());
-    
-    // Add DLL files
-    const dllFiles = createDLLFiles();
-    dllFiles.forEach(dll => {
-      zip.file(`dll/${dll.name}.txt`, dll.content);
-    });
-    
-    // Add configuration files
-    const configFiles = createConfigFiles();
-    Object.entries(configFiles).forEach(([filename, content]) => {
-      zip.file(`config/${filename}`, content);
-    });
-    
-    // Add installation scripts
-    const installScripts = createInstallScripts();
-    Object.entries(installScripts).forEach(([filename, content]) => {
-      zip.file(`scripts/${filename}`, content);
-    });
-    
-    // Add registry keys for auto-uninstall
-    zip.file("registry.reg", `Windows Registry Editor Version 5.00
-
-[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\RetroNexus]
-"DisplayName"="RetroNexus Emulator"
-"DisplayVersion"="1.2.5"
-"Publisher"="RetroNexus Technologies Inc."
-"DisplayIcon"="%ProgramFiles%\\RetroNexus Emulator\\RetroNexus.exe"
-"InstallLocation"="C:\\RetroNexus"
-"UninstallString"="C:\\RetroNexus\\uninstall.exe"
-"EstimatedSize"=dword:0000C350
-"NoModify"=dword:00000001
-"NoRepair"=dword:00000001
-"SystemComponent"=dword:00000000
-"URLInfoAbout"="https://retronexus.example.com"
-"HelpLink"="https://retronexus.example.com/support"
-`);
-    
-    // Add README with updated requirements
-    zip.file("README.txt", `
-RetroNexus Emulator v1.2.5 - Installation Instructions
-=====================================================
-
-Thank you for downloading RetroNexus Emulator!
-
-SYSTEM REQUIREMENTS:
--------------------
-${windowsRequirements.os}
-${windowsRequirements.processor}
-${windowsRequirements.memory}
-${windowsRequirements.graphics}
-${windowsRequirements.directX}
-${windowsRequirements.storage}
-${windowsRequirements.additionalNotes}
-
-INSTALLATION STEPS:
-------------------
-1. Extract the archive contents to a temporary directory
-2. Run install.bat or install.ps1 with administrative privileges
-3. Accept the User Account Control (UAC) prompt
-4. The installer will check for required dependencies:
-   - Visual C++ Redistributable
-   - DirectX 12 Runtime
-5. Hardware scanning will verify your system meets requirements
-6. Files will be installed to C:\\RetroNexus by default
-7. Launch RetroNexus Emulator
-
-BIOS CONFIGURATION:
-------------------
-- During first boot, the BIOS configuration will appear
-- Press DEL, F2, or F12 during boot to access BIOS settings
-- Configure graphics settings and performance options
-
-TROUBLESHOOTING:
----------------
-- If installation fails with "Error 1722", restart and try again
-- For "0x80070005" error, run the installer as administrator
-- For hardware compatibility issues, update graphics drivers
-- Disable antivirus temporarily if installation is blocked
-- See https://retronexus.example.com/support for assistance
-
-For support, visit: https://retronexus.example.com
-Join our Discord: https://discord.gg/retronexus
-    `);
-    
-    // Generate the zip package with all components
-    const content = await zip.generateAsync({
-      type: "blob",
-      compression: "DEFLATE",
-      compressionOptions: {
-        level: 9
-      }
-    });
-    
-    return content;
-  } catch (error) {
-    console.error("Error generating executable package:", error);
-    toast.error("Package generation failed", {
-      description: "There was a problem creating the Windows-compatible setup package."
-    });
-    throw error;
-  }
-};
-
