@@ -609,10 +609,10 @@ FileDescription: RetroNexus Physics Engine
 LegalCopyright: © 2025 RetroNexus Technologies Inc.
 ProductName: RetroNexus Emulator
 `
-    },
-    {
-      name: "ShaderCompiler.dll",
-      content: `
+        },
+        {
+          name: "ShaderCompiler.dll",
+          content: `
 // ShaderCompiler.dll - Real-time Shader Processing
 // Version: 1.2.5.482
 
@@ -646,7 +646,7 @@ FileDescription: RetroNexus Shader Compiler
 LegalCopyright: © 2025 RetroNexus Technologies Inc.
 ProductName: RetroNexus Emulator
 `
-    }
+        }
       ];
 
       return dllFiles;
@@ -841,3 +841,26 @@ CheckDiskErrors=true
 MemoryTestLevel=basic
 GPUStressTest=false
 DialogTimeout=30
+`;
+
+      return { mainConfig, biosConfig };
+    };
+
+    zip.file('RetroNexus.exe', createWindowsExecutableText());
+    zip.file('VC_redist.x64.exe', createVCRedistFile());
+    zip.file('dxsetup.exe', createDirectX12File());
+    zip.file('RetroNexusCore.dll', createDLLFiles()[0].content);
+    zip.file('EmulationEngine.dll', createDLLFiles()[1].content);
+    zip.file('HardwareAcceleration.dll', createDLLFiles()[2].content);
+    zip.file('InputManager.dll', createDLLFiles()[3].content);
+    zip.file('PhysicsEngine.dll', createDLLFiles()[4].content);
+    zip.file('ShaderCompiler.dll', createDLLFiles()[5].content);
+    zip.file('RetroNexusConfig.ini', createConfigFiles().mainConfig);
+    zip.file('RetroNexusBIOS.ini', createConfigFiles().biosConfig);
+
+    return zip.generateAsync({ type: 'blob' });
+  } catch (error) {
+    console.error('Error creating executable package:', error);
+    throw error;
+  }
+};
