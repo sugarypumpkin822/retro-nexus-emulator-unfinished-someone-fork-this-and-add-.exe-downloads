@@ -17,7 +17,7 @@ const EmulatorHeader: React.FC = () => {
       setTimeout(() => {
         // Simulate creating game directory structure
         toast.info('Creating directory structure...', {
-          description: 'Setting up C:\\RetroNexus\\Games and system folders'
+          description: 'Preparing files and configuration for C:\\RetroNexus'
         });
         
         setTimeout(() => {
@@ -27,10 +27,10 @@ const EmulatorHeader: React.FC = () => {
               const url = URL.createObjectURL(content);
               const link = document.createElement('a');
               link.href = url;
-              link.download = 'RetroNexus-Win11-Complete.zip';
+              link.download = 'RetroNexus-Setup-Files.zip';
               
               toast.success('Download ready!', {
-                description: 'RetroNexus-Win11-Complete.zip (475MB)\nIncludes: Emulator, BIOS, Setup Wizard, DirectX, and all runtime files',
+                description: 'RetroNexus-Setup-Files.zip\nIncludes: Installation scripts, configuration files, and .txt versions of binary files',
               });
               
               // Start download
@@ -45,7 +45,7 @@ const EmulatorHeader: React.FC = () => {
                 // Show follow-up information
                 setTimeout(() => {
                   toast.info('Installation instructions', {
-                    description: 'Run RetroNexus-Setup.exe from the downloaded package to begin installation'
+                    description: 'Extract the ZIP and run install.bat or install.ps1 with administrative privileges'
                   });
                 }, 1000);
               }, 100);
@@ -91,7 +91,7 @@ const EmulatorHeader: React.FC = () => {
           className="bg-gradient-to-r from-emulator-accent to-emulator-accent-secondary text-black font-bold py-2 px-6 clip-download-button animate-pulse-glow"
         >
           <Download size={18} className="mr-2" />
-          Download Complete Package
+          Download Windows Setup Package
         </Button>
       </header>
     </div>
