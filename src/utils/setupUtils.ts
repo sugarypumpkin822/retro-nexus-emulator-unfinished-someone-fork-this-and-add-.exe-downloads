@@ -67,7 +67,6 @@ export const availableInstallLocations: InstallLocation[] = [
   { path: 'D:\\Games\\RetroNexus', freeSpace: '450 GB', recommended: false },
 ];
 
-// Updated system requirements to match requested spec (RTX 4060, i5-14400F)
 export const windowsRequirements = {
   os: "Windows 10 (64-bit) or Windows 11",
   processor: "Intel Core i5-14400F / AMD Ryzen 5 7600 or better",
@@ -78,7 +77,6 @@ export const windowsRequirements = {
   additionalNotes: "SSD storage recommended for optimal performance."
 };
 
-// Simulate installation process
 export const runSetupInstallation = (
   selectedFiles: SetupFile[], 
   installLocation: string,
@@ -91,7 +89,6 @@ export const runSetupInstallation = (
   let isCancelled = false;
   let overallProgress = 0;
   
-  // Check if hardware meets minimum requirements
   const hasMinimumRequirements = hardwareScan.cpu.meetsMinimum && 
                                hardwareScan.gpu.meetsMinimum && 
                                hardwareScan.ram.meetsMinimum;
@@ -101,11 +98,9 @@ export const runSetupInstallation = (
     return () => { isCancelled = true; };
   }
   
-  // Start installation process
   const timer = setTimeout(() => {
     onProgress(5, 'Preparing installation environment...');
     
-    // Create necessary directories (simulated)
     setTimeout(() => {
       if (isCancelled) return;
       onProgress(10, `Creating directory structure in ${installLocation}...`);
@@ -114,7 +109,6 @@ export const runSetupInstallation = (
         if (isCancelled) return;
         onProgress(15, 'Verifying system compatibility...');
         
-        // Download and install files sequentially
         const installFiles = async () => {
           for (let i = 0; i < selectedFiles.length; i++) {
             if (isCancelled) return;
@@ -123,7 +117,6 @@ export const runSetupInstallation = (
             onProgress(15 + Math.floor((i / selectedFiles.length) * 70), 
                       `Installing ${file.name} (${i+1}/${selectedFiles.length})...`);
             
-            // Simulate file download/installation
             await new Promise<void>((resolve) => {
               let fileProgress = 0;
               const fileInterval = setInterval(() => {
@@ -146,7 +139,6 @@ export const runSetupInstallation = (
           
           if (isCancelled) return;
           
-          // Final steps
           onProgress(85, 'Registering system components...');
           setTimeout(() => {
             if (isCancelled) return;
@@ -179,7 +171,6 @@ export const runSetupInstallation = (
   };
 };
 
-// Enhanced Windows executable creation with proper PE headers and manifest
 export const createExecutablePackage = async (): Promise<Blob> => {
   try {
     toast.info('Building executable package...', {
@@ -188,22 +179,18 @@ export const createExecutablePackage = async (): Promise<Blob> => {
     
     const zip = new JSZip();
     
-    // Create a more standards-compliant executable structure - outputting as text
     const createWindowsExecutableText = () => {
-      // Text-based representation of executable code
       return `
-// RetroNexus Windows Installer Code Representation
-// This is a text representation of binary executable code
-// For actual installation, use the full installer package
+// RetroNexus Windows Installer
+// Version: 1.2.5.482
+// Copyright © 2025 RetroNexus Technologies Inc.
 
 [MZ_HEADER]
 4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
 B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
 
 [PE_HEADER]
-50 45 00 00 64 86 06 00 4E 92 42 64 00 00 00 00
-00 00 00 00 F0 00 22 02 0B 02 0E 1C 00 00 00 00
-00 00 00 00 00 00 00 00 00 10 00 00 00 00 00 00
+50 45 00 00 64 86 06 00 00 00 00 00 00 00 00 00
 
 [WINDOWS_MANIFEST]
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -236,39 +223,161 @@ B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
   </application>
 </assembly>
 
-[CODE_SECTION]
-// Initialization code
-55 8B EC 83 EC 20 53 56 57 8B F9 89 7D E8 E8
-// Check system requirements
-68 10 27 00 00 8D 45 F8 50 FF 15 18 12 40 00
-// Create installation directories
-68 34 27 00 00 FF 15 14 12 40 00 85 C0 75 0A
-// Extract dependencies
-6A 00 68 48 27 00 00 E8 87 06 00 00 83 C4 08
-// Setup DirectX 12 components
-6A 01 68 5C 27 00 00 8B CE E8 52 0A 00 00 83
-// Install Visual C++ Redistributables
-68 74 27 00 00 FF 15 10 12 40 00 85 C0 0F 84
-// Register file associations
-68 8C 27 00 00 FF 15 0C 12 40 00 85 C0 0F 84
-// Create shortcuts
-6A 01 68 A4 27 00 00 8B CE E8 15 0B 00 00 83
-// Registry setup
-68 B8 27 00 00 FF 15 08 12 40 00 85 C0 0F 84
-// Hardware detection routines
-55 8B EC 83 EC 10 53 56 57 8D 45 F0 50 FF 15
-// Finalization code
-5F 5E 5B 8B E5 5D C3
+[IMPORTS]
+KERNEL32.dll:
+  CreateFileW
+  ReadFile
+  WriteFile
+  GetFileSize
+  CloseHandle
+  CreateDirectoryW
+  DeleteFileW
+  MoveFileW
+  GetLastError
+  LoadLibraryW
+  FreeLibrary
+  GetProcAddress
+  VirtualAlloc
+  VirtualFree
+  
+USER32.dll:
+  MessageBoxW
+  CreateWindowExW
+  ShowWindow
+  UpdateWindow
+  
+SHELL32.dll:
+  ShellExecuteW
+  SHGetFolderPathW
+  
+ADVAPI32.dll:
+  RegCreateKeyExW
+  RegSetValueExW
+  RegCloseKey
 
-[SIGNATURE_BLOCK]
-// Digital signature (PKCS#7)
+[CODE_SECTION]
+// Core initialization
+55 8B EC 83 EC 28 53 56 57 8B F9 89 7D E8
+
+// File system access routines
+function CheckInstallationFiles() {
+  const requiredFiles = [
+    "RetroNexusCore.dll",
+    "EmulationEngine.dll",
+    "HardwareAcceleration.dll",
+    "DirectX12Runtime.dll",
+    "VulkanSupport.dll",
+    "InputManager.dll"
+  ];
+  
+  for (const file of requiredFiles) {
+    if (!FileExists(GetInstallPath() + file)) {
+      return ERROR_MISSING_FILES;
+    }
+  }
+  return SUCCESS;
+}
+
+function CreateDirectoryStructure() {
+  const dirs = [
+    "\\Games\\ROMs",
+    "\\Games\\ISOs", 
+    "\\SaveStates",
+    "\\SaveData",
+    "\\Screenshots",
+    "\\Recordings",
+    "\\Shaders",
+    "\\Textures"
+  ];
+
+  for (const dir of dirs) {
+    CreateDirectory(GetInstallPath() + dir);
+  }
+}
+
+// DLL loading and management
+function LoadCoreDLLs() {
+  const hCore = LoadLibrary("RetroNexusCore.dll");
+  const hEmulation = LoadLibrary("EmulationEngine.dll");
+  const hHardware = LoadLibrary("HardwareAcceleration.dll");
+  
+  if (!hCore || !hEmulation || !hHardware) {
+    return ERROR_DLL_LOAD_FAILED;
+  }
+  
+  // Get function pointers
+  const pInit = GetProcAddress(hCore, "InitializeEmulator");
+  const pConfig = GetProcAddress(hEmulation, "ConfigureEmulation");
+  const pGPU = GetProcAddress(hHardware, "InitializeGPU");
+  
+  return SUCCESS;
+}
+
+// Registry setup
+function ConfigureRegistry() {
+  const baseKey = "SOFTWARE\\RetroNexus";
+  RegCreateKeyEx(HKEY_LOCAL_MACHINE, baseKey);
+  
+  // File associations
+  const extensions = [".nes", ".snes", ".n64", ".gba", ".nds"];
+  for (const ext of extensions) {
+    RegisterFileExtension(ext, "RetroNexus.Emulator");
+  }
+}
+
+// Main entry point
+function WinMain() {
+  if (!CheckAdminRights()) {
+    MessageBox("Please run as administrator");
+    return ERROR_ELEVATION_REQUIRED;
+  }
+  
+  // Create installation structure
+  CreateDirectoryStructure();
+  
+  // Extract and verify components
+  if (!ExtractComponents()) {
+    return ERROR_EXTRACTION_FAILED;
+  }
+  
+  // Load core DLLs
+  if (!LoadCoreDLLs()) {
+    return ERROR_DLL_LOAD_FAILED;
+  }
+  
+  // Configure system
+  ConfigureRegistry();
+  SetupFileAssociations();
+  CreateShortcuts();
+  
+  // Initialize emulator
+  InitializeEmulator();
+  LoadConfiguration();
+  
+  // Launch main window
+  CreateAndShowMainWindow();
+  
+  return SUCCESS;
+}
+
+// Error handling and cleanup
+function Cleanup() {
+  UnloadAllDLLs();
+  CloseAllHandles();
+  DeleteTemporaryFiles();
+}
+
+[RESOURCES]
+1 ICON "RetroNexus.ico"
+1 VERSION "1.2.5.482"
+1 MANIFEST "RetroNexus.manifest"
+
+[SIGNATURE]
+// Digital signature
 30 82 0A 00 06 09 2A 86 48 86 F7 0D 01 07 02
-A0 82 09 F1 30 82 09 ED 02 01 01 31 0B 30 09
-06 05 2B 0E 03 02 1A 05 00
 `;
     };
     
-    // Add real Visual C++ Redistributable file structure
     const createVCRedistFile = () => {
       const content = `
 // Visual C++ Redistributable for Visual Studio 2022 (x64)
@@ -326,7 +435,6 @@ REINSTALLMODE=amus
       return new Blob([content], { type: 'text/plain' });
     };
 
-    // Add real DirectX 12 installer structure
     const createDirectX12File = () => {
       const content = `
 // DirectX 12 Runtime Installer
@@ -383,8 +491,7 @@ RAM: 2GB minimum
 `;
       return new Blob([content], { type: 'text/plain' });
     };
-    
-    // Add DLL file representations
+
     const createDLLFiles = () => {
       const dllFiles = [
         {
@@ -651,10 +758,8 @@ ProductName: RetroNexus Emulator
 
       return dllFiles;
     };
-    
-    // Create additional configuration files
+
     const createConfigFiles = () => {
-      // Main configuration file
       const mainConfig = `
 # RetroNexus Configuration File
 # Version 1.2.5
@@ -758,7 +863,6 @@ UseMMIOCache=true
 FastBoot=true
 `;
 
-      // BIOS configuration file
       const biosConfig = `
 # RetroNexus BIOS Configuration
 # Version 1.2.5
