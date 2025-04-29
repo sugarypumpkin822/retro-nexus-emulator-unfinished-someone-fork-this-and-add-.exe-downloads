@@ -1,3 +1,4 @@
+
 /**
  * Helper functions to generate executable content
  */
@@ -873,5 +874,48 @@ bool PerformInstallation(HWND hwndProgress, SetupState* state) {
     CreateDesktopShortcut(state->installPath);
   }
   
-  // CreateStartMenuShortcuts
-  if (state->create
+  // Create Start Menu shortcuts
+  if (state->createStartMenuShortcuts) {
+    SendMessageToUI(hwndProgress, "Creating Start Menu shortcuts...");
+    CreateStartMenuShortcuts(state->installPath);
+  }
+  
+  // Register uninstaller
+  SendMessageToUI(hwndProgress, "Registering uninstaller...");
+  RegisterUninstaller(state->installPath);
+  
+  // Set environment variables
+  SendMessageToUI(hwndProgress, "Setting up environment variables...");
+  SetEnvironmentVariables(state->installPath);
+  
+  return true;
+}
+
+[RESOURCES]
+1 ICON "Setup.ico"
+2 BITMAP "Banner.bmp"
+3 BITMAP "Welcome.bmp"
+4 BITMAP "Complete.bmp"
+5 DIALOG IDD_SETUP_DIALOG
+6 DIALOG IDD_LICENSE_DIALOG
+7 DIALOG IDD_COMPONENTS_DIALOG
+8 DIALOG IDD_PROGRESS_DIALOG
+9 DIALOG IDD_COMPLETE_DIALOG
+10 RCDATA "license.rtf"
+
+[EMBEDDED_RESOURCES]
+// Embedded small assets needed for initial setup
+// These will be extracted during installation
+1 RCDATA "embedded_banner.png"
+2 RCDATA "embedded_icon.ico"
+3 RCDATA "embedded_license.txt"
+
+// Self-extracting setup capability
+[SELF_EXTRACT_HEADER]
+// Size and offset information for self-extraction
+// This allows the setup.exe to download and install all necessary files
+HEADER_SIZE = 4096
+DOWNLOAD_MANIFEST_OFFSET = 2048
+DOWNLOAD_MANIFEST_SIZE = 2048
+`;
+};
