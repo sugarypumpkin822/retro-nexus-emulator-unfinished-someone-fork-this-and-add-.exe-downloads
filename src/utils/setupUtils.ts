@@ -13,6 +13,7 @@ import {
 } from './setupData';
 import { runSetupInstallation } from './installationUtils';
 import { createExecutablePackage } from './packageGenerator/packageBuilder';
+import { createSetupExe } from './packageGenerator/executableGenerator';
 
 // Export all the imports so they're available to components that import from setupUtils
 export {
@@ -21,7 +22,8 @@ export {
   availableInstallLocations,
   windowsRequirements,
   runSetupInstallation,
-  createExecutablePackage
+  createExecutablePackage,
+  createSetupExe
 };
 
 // Re-export types for backward compatibility
