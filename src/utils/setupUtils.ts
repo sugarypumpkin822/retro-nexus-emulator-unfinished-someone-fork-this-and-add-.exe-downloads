@@ -173,15 +173,80 @@ export const runSetupInstallation = (
 
 export const createExecutablePackage = async (): Promise<Blob> => {
   try {
-    toast.info('Building executable package...', {
-      description: 'Creating Windows-compatible installer'
-    });
-    
     const zip = new JSZip();
     
-    const createWindowsExecutableText = () => {
-      return `
-// RetroNexus Windows Installer
+    // Add main executable files
+    zip.file('RetroNexus.exe', createWindowsExecutableText());
+    zip.file('Emulator.exe', createEmulatorExe());
+    zip.file('Launcher.exe', createLauncherExe());
+    zip.file('Updater.exe', createUpdaterExe());
+    zip.file('CrashHandler.exe', createCrashHandlerExe());
+    zip.file('Setup.exe', createSetupExe());
+    
+    // Add support files
+    zip.file('VC_redist.x64.exe', createVCRedistFile());
+    zip.file('dxsetup.exe', createDirectX12File());
+    
+    // Create DLL files
+    createDLLFiles().forEach(dll => {
+      zip.file(dll.name, dll.content);
+    });
+    
+    // Create main configuration files
+    const configs = createConfigFiles();
+    zip.file('RetroNexusConfig.ini', configs.mainConfig);
+    zip.file('RetroNexusBIOS.ini', configs.biosConfig);
+    
+    // Create folder structure with readme files in each
+    const folders = [
+      'roms', 'saves', 'states', 'configs', 'logs', 'cores', 'plugins', 
+      'assets', 'shaders', 'themes', 'translations', 'tools', 'docs', 
+      'netplay', 'replays', 'screenshots', 'cheats', 'profiles',
+      'input_profiles', 'audio', 'video', 'modloader', 'cloud', 
+      'telemetry', 'cache'
+    ];
+    
+    folders.forEach(folder => {
+      zip.file(`${folder}/readme.txt`, createFolderReadme(folder));
+    });
+    
+    // Add sample files for certain folders
+    zip.file('configs/default.ini', createSampleConfigFile());
+    zip.file('shaders/crt.glsl', createSampleShaderFile());
+    zip.file('themes/default.json', createSampleThemeFile());
+    zip.file('logs/startup.log', createSampleLogFile());
+    
+    // Add documentation files
+    zip.file('docs/manual.pdf', createDummyPdfFile('RetroNexus User Manual'));
+    zip.file('docs/compatibility.html', createCompatibilityListHtml());
+    zip.file('docs/legal.txt', createLegalText());
+    zip.file('README.txt', createMainReadmeFile());
+    
+    // Add sample BIOS files (text-based representations)
+    zip.file('cores/bios/ps1_bios.bin', createDummyBiosFile('PlayStation BIOS'));
+    zip.file('cores/bios/dreamcast_bios.bin', createDummyBiosFile('Dreamcast BIOS'));
+    zip.file('cores/bios/gba_bios.bin', createDummyBiosFile('Game Boy Advance BIOS'));
+    
+    // Add system-specific cores
+    const systems = ['nes', 'snes', 'genesis', 'n64', 'ps1', 'ps2', 'dreamcast', 
+                    'gamecube', 'gba', 'nds', 'psp', 'saturn', 'wii'];
+    
+    systems.forEach(system => {
+      zip.file(`cores/${system}_core.dll`, createSystemCoreDll(system));
+    });
+
+    return zip.generateAsync({ type: 'blob' });
+  } catch (error) {
+    console.error('Error creating executable package:', error);
+    throw error;
+  }
+};
+
+// Helper functions to create various file contents
+
+const createEmulatorExe = () => {
+  return `
+// RetroNexus Emulator.exe
 // Version: 1.2.5.482
 // Copyright © 2025 RetroNexus Technologies Inc.
 
@@ -193,1232 +258,566 @@ B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
 50 45 00 00 64 86 06 00 4C 01 02 00 00 00 00 00
 00 00 00 00 F0 00 22 02 0B 02 0E 1C 00 00 00 00
 00 00 00 00 00 00 00 00 00 10 00 00 00 02 00 00
-40 01 00 00 00 10 00 00 00 02 00 00 04 00 00 00
-
-[WINDOWS_MANIFEST]
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <assemblyIdentity 
-    version="1.2.5.482" 
-    name="RetroNexus.Emulator" 
-    type="win32"
-    processorArchitecture="amd64"
-  />
-  <description>RetroNexus Multi-System Emulator</description>
-  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
-    <security>
-      <requestedPrivileges>
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
-      </requestedPrivileges>
-    </security>
-  </trustInfo>
-  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
-    <application>
-      <!-- Windows 11 -->
-      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
-      <!-- Windows 10 -->
-      <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}"/>
-      <!-- Windows 8.1 -->
-      <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"/>
-      <!-- Windows 8 -->
-      <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/>
-    </application>
-  </compatibility>
-  <application xmlns="urn:schemas-microsoft-com:asm.v3">
-    <windowsSettings>
-      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
-      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2,PerMonitor</dpiAwareness>
-      <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
-    </windowsSettings>
-  </application>
-</assembly>
 
 [IMPORTS]
-KERNEL32.dll:
-  CreateFileW
-  CreateDirectoryW
-  ReadFile
-  WriteFile
-  CloseHandle
-  GetFileAttributesW
-  SetFileAttributesW
-  DeleteFileW
-  MoveFileW
-  CopyFileW
-  GetLastError
-  LoadLibraryW
-  GetProcAddress
-  FreeLibrary
-  VirtualAlloc
-  VirtualFree
-  GetSystemInfo
-  GetLogicalDriveStringsW
-  GetDriveTypeW
-  GetDiskFreeSpaceExW
-  FindFirstFileW
-  FindNextFileW
-  FindClose
-  CreateProcessW
-  TerminateProcess
-  WaitForSingleObject
-  GetExitCodeProcess
-  GetModuleHandleW
-  GetModuleFileNameW
-  SetCurrentDirectoryW
-  GetCurrentDirectoryW
+KERNEL32.dll
+USER32.dll
+GDI32.dll
+RetroNexusCore.dll
+EmulationEngine.dll
+HardwareAcceleration.dll
+InputManager.dll
+AudioEngine.dll
 
-USER32.dll:
-  MessageBoxW
-  CreateWindowExW
-  ShowWindow
-  UpdateWindow
-  GetSystemMetrics
-  RegisterClassExW
-  UnregisterClassW
-  LoadImageW
-  LoadIconW
-  LoadCursorW
-  SetWindowTextW
-  GetWindowTextW
-  SendMessageW
-  PostMessageW
-  GetDlgItem
-  DestroyWindow
-  GetDesktopWindow
-  GetWindowRect
-
-ADVAPI32.dll:
-  RegCreateKeyExW
-  RegOpenKeyExW
-  RegSetValueExW
-  RegQueryValueExW
-  RegDeleteKeyW
-  RegCloseKey
-  InitiateSystemShutdownExW
-  RegEnumKeyExW
-  RegEnumValueW
-  GetTokenInformation
-  OpenProcessToken
-  LookupPrivilegeValueW
-  AdjustTokenPrivileges
+[MAIN]
+// Main emulation core entry point
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+  // Initialize RetroNexus subsystems
+  if (!InitializeEmulationSystems()) {
+    ShowErrorDialog("Failed to initialize emulation systems");
+    return 1;
+  }
   
-SHELL32.dll:
-  ShellExecuteW
-  SHGetFolderPathW
-  SHFileOperationW
-  SHCreateDirectoryExW
-  SHGetKnownFolderPath
-  SHChangeNotify
-  SHGetSpecialFolderPathW
-  ShellAboutW
-  ExtractIconW
-  
-SHLWAPI.dll:
-  PathFileExistsW
-  PathIsDirectoryW
-  PathFindExtensionW
-  PathRemoveFileSpecW
-  PathRenameExtensionW
-  PathCombineW
-  PathAppendW
-  PathIsRelativeW
-  
-VERSION.dll:
-  GetFileVersionInfoSizeW
-  GetFileVersionInfoW
-  VerQueryValueW
-
-[CODE_SECTION]
-// Main entry point and initialization
-function WinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow) {
   // Parse command line arguments
-  const args = ParseCommandLine(lpCmdLine);
+  ParseCommandLine(lpCmdLine);
   
-  // Set up exception handler
-  SetUnhandledExceptionFilter(CustomExceptionHandler);
-  
-  // Create and show installer UI
-  if (!args.silent) {
-    CreateInstallerWindow(hInstance, nCmdShow);
-    InitializeUI();
-    return RunMessageLoop();
-  } else {
-    return RunSilentInstallation(args);
+  // Load configuration
+  if (!LoadConfiguration()) {
+    ShowErrorDialog("Failed to load configuration");
+    return 1;
   }
+  
+  // Create main window
+  if (!CreateMainWindow(hInstance, nCmdShow)) {
+    ShowErrorDialog("Failed to create main window");
+    return 1;
+  }
+  
+  // Enter message loop
+  MSG msg;
+  while (GetMessage(&msg, NULL, 0, 0)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+  
+  // Cleanup and exit
+  ShutdownEmulationSystems();
+  return msg.wParam;
 }
 
-// System requirement checking with detailed hardware analysis
-function VerifySystemRequirements() {
-  // Check OS version
-  if (!IsWindows10OrNewer()) {
-    LogError("OS requirement not met: Windows 10 or newer required");
+// Emulation system initialization
+bool InitializeEmulationSystems() {
+  // Load core DLLs
+  if (!LoadCoreDLLs()) {
     return false;
   }
   
-  // Check CPU
-  const cpuInfo = GetCPUInfo();
-  if (cpuInfo.cores < 6 || cpuInfo.frequency < 3.0) {
-    LogWarning("CPU below recommended specs: " + cpuInfo.name);
-    // Continue with warning
-  }
-  
-  // Check RAM
-  const memInfo = GetSystemMemory();
-  if (memInfo.totalPhysical < 16 * 1024 * 1024 * 1024) {
-    LogWarning("RAM below recommended specs: " + FormatMemorySize(memInfo.totalPhysical));
-    // Continue with warning
-  }
-  
-  // Check GPU
-  const gpuInfo = GetGPUInfo();
-  if (!IsGPUCompatible(gpuInfo)) {
-    LogError("GPU requirement not met: RTX 4060/RX 7600 or better required");
+  // Initialize graphics subsystem
+  if (!InitializeGraphics()) {
     return false;
   }
   
-  // Check DirectX
-  if (!CheckDirectXVersion(12)) {
-    LogWarning("DirectX 12 not detected, will be installed");
-  }
-  
-  // Check free disk space
-  const installPath = GetInstallPath();
-  if (!CheckDiskSpace(installPath, 50 * 1024 * 1024 * 1024)) {
-    LogError("Insufficient disk space: 50 GB required");
+  // Initialize audio subsystem
+  if (!InitializeAudio()) {
     return false;
   }
-
+  
+  // Initialize input subsystem
+  if (!InitializeInput()) {
+    return false;
+  }
+  
+  // Initialize save system
+  if (!InitializeSaveSystem()) {
+    return false;
+  }
+  
   return true;
-}
-
-// Advanced file system operations with error recovery
-function CreateInstallationDirectories() {
-  const basePath = GetInstallPath();
-  const directories = [
-    "Games\\ROMs",
-    "Games\\ISOs",
-    "SaveStates",
-    "SaveData",
-    "Screenshots",
-    "Recordings",
-    "Shaders",
-    "Textures",
-    "BIOS",
-    "Logs",
-    "Config",
-    "Cache",
-    "Updates"
-  ];
-  
-  for (const dir of directories) {
-    const fullPath = PathCombine(basePath, dir);
-    if (!PathFileExists(fullPath)) {
-      if (!CreateDirectoryRecursive(fullPath)) {
-        LogError("Failed to create directory: " + fullPath);
-        throw new Error("Failed to create installation directories");
-      }
-    }
-  }
-  
-  // Set appropriate permissions
-  SetDirectoryPermissions(basePath);
-}
-
-// Robust file extraction with verification
-function ExtractFiles() {
-  try {
-    // Extract core DLLs
-    ExtractCoreFiles();
-    
-    // Extract BIOS files
-    ExtractBIOSFiles();
-    
-    // Extract configuration files
-    ExtractConfigFiles();
-    
-    // Extract shader files
-    ExtractShaderFiles();
-    
-    // Verify file integrity
-    if (!VerifyFileIntegrity()) {
-      throw new Error("File integrity check failed");
-    }
-  } catch (error) {
-    LogError("Extraction error: " + error.message);
-    throw error;
-  }
-}
-
-// Dynamic DLL loading with dependency resolution
-function LoadAndInitializeDLLs() {
-  // First pass: load all DLLs
-  const dllLoadOrder = [
-    { name: "RetroNexusCore.dll", required: true },
-    { name: "EmulationEngine.dll", required: true },
-    { name: "HardwareAcceleration.dll", required: true },
-    { name: "InputManager.dll", required: true },
-    { name: "AudioEngine.dll", required: true },
-    { name: "NetworkServices.dll", required: true },
-    { name: "PhysicsEngine.dll", required: true },
-    { name: "ShaderCompiler.dll", required: true },
-    { name: "TextureProcessor.dll", required: true },
-    { name: "SaveStateManager.dll", required: true },
-    { name: "RenderingUtils.dll", required: true },
-    { name: "EnhancedGraphics.dll", required: false },
-    { name: "AIUpscaling.dll", required: false },
-    { name: "RayTracingSupport.dll", required: false },
-    { name: "VirtualSurroundAudio.dll", required: false }
-  ];
-  
-  const loadedModules = new Map();
-  
-  for (const dll of dllLoadOrder) {
-    try {
-      const hModule = LoadLibrary(PathCombine(GetInstallPath(), dll.name));
-      if (!hModule) {
-        const error = GetLastError();
-        if (dll.required) {
-          throw new Error(\`Failed to load \${dll.name}: Error \${error}\`);
-        } else {
-          LogWarning(\`Optional DLL \${dll.name} not loaded: Error \${error}\`);
-        }
-      } else {
-        loadedModules.set(dll.name, hModule);
-      }
-    } catch (error) {
-      if (dll.required) {
-        throw error;
-      } else {
-        LogWarning(\`Failed to load optional DLL \${dll.name}: \${error.message}\`);
-      }
-    }
-  }
-  
-  // Second pass: initialize DLLs in order
-  for (const [name, hModule] of loadedModules.entries()) {
-    const initFunc = GetProcAddress(hModule, "Initialize");
-    if (initFunc) {
-      const result = initFunc();
-      if (result !== 0) {
-        LogWarning(\`DLL initialization warning for \${name}: Code \${result}\`);
-      }
-    }
-  }
-  
-  return loadedModules;
-}
-
-// Comprehensive registry configuration
-function ConfigureRegistry() {
-  // Main application keys
-  const baseKey = "SOFTWARE\\RetroNexus";
-  CreateRegistryKey(HKEY_LOCAL_MACHINE, baseKey);
-  SetRegistryValue(HKEY_LOCAL_MACHINE, baseKey, "InstallPath", REG_SZ, GetInstallPath());
-  SetRegistryValue(HKEY_LOCAL_MACHINE, baseKey, "Version", REG_SZ, "1.2.5.482");
-  SetRegistryValue(HKEY_LOCAL_MACHINE, baseKey, "InstallDate", REG_DWORD, Math.floor(Date.now() / 1000));
-  
-  // File associations
-  const fileExtensions = [
-    { ext: ".nes", desc: "NES ROM File", icon: "icons\\nes.ico" },
-    { ext: ".snes", desc: "SNES ROM File", icon: "icons\\snes.ico" },
-    { ext: ".n64", desc: "Nintendo 64 ROM File", icon: "icons\\n64.ico" },
-    { ext: ".z64", desc: "Nintendo 64 ROM File", icon: "icons\\n64.ico" },
-    { ext: ".v64", desc: "Nintendo 64 ROM File", icon: "icons\\n64.ico" },
-    { ext: ".iso", desc: "Disc Image File", icon: "icons\\disc.ico" },
-    { ext: ".cue", desc: "Disc Cue Sheet", icon: "icons\\disc.ico" },
-    { ext: ".gba", desc: "Game Boy Advance ROM", icon: "icons\\gba.ico" },
-    { ext: ".nds", desc: "Nintendo DS ROM", icon: "icons\\nds.ico" },
-    { ext: ".psp", desc: "PlayStation Portable ISO", icon: "icons\\psp.ico" },
-    { ext: ".wii", desc: "Wii ROM File", icon: "icons\\wii.ico" },
-    { ext: ".gcm", desc: "GameCube ROM File", icon: "icons\\gcm.ico" },
-    { ext: ".bin", desc: "Binary ROM File", icon: "icons\\bin.ico" },
-    { ext: ".smd", desc: "Genesis/MegaDrive ROM", icon: "icons\\genesis.ico" },
-    { ext: ".32x", desc: "Sega 32X ROM File", icon: "icons\\32x.ico" },
-    { ext: ".gbc", desc: "Game Boy Color ROM", icon: "icons\\gbc.ico" },
-    { ext: ".gb", desc: "Game Boy ROM", icon: "icons\\gb.ico" },
-    { ext: ".ws", desc: "WonderSwan ROM", icon: "icons\\ws.ico" }
-  ];
-  
-  for (const fileType of fileExtensions) {
-    RegisterFileExtension(fileType.ext, "RetroNexus.ROM", fileType.desc, 
-                        PathCombine(GetInstallPath(), fileType.icon));
-  }
-  
-  // Save state associations
-  RegisterFileExtension(".rnsav", "RetroNexus.SaveState", "RetroNexus Save State", 
-                      PathCombine(GetInstallPath(), "icons\\savestate.ico"));
-  
-  // Context menu integration
-  AddContextMenuItems();
-  
-  // Set up environment variables
-  SetEnvironmentVariables();
-  
-  // Configure uninstall information
-  SetUpUninstallInfo();
-  
-  // Register COM components
-  if (!RegisterCOMComponents()) {
-    LogWarning("Failed to register some COM components");
-  }
-  
-  // Notify shell of changes
-  SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, null, null);
-}
-
-// Advanced shortcut creation
-function CreateShortcuts() {
-  const exePath = PathCombine(GetInstallPath(), "RetroNexus.exe");
-  const iconPath = PathCombine(GetInstallPath(), "RetroNexus.ico");
-  
-  // Desktop shortcuts
-  CreateShortcut(GetDesktopPath(), "RetroNexus Emulator", exePath, "", iconPath, 0);
-  
-  // Start menu shortcuts
-  const startMenuPath = PathCombine(GetStartMenuPath(), "RetroNexus");
-  CreateDirectory(startMenuPath);
-  
-  // Main shortcut
-  CreateShortcut(startMenuPath, "RetroNexus Emulator", exePath, "", iconPath, 0);
-  
-  // Additional shortcuts
-  CreateShortcut(startMenuPath, "ROM Browser", exePath, "--browser", iconPath, 1);
-  CreateShortcut(startMenuPath, "Settings", exePath, "--settings", iconPath, 2);
-  CreateShortcut(startMenuPath, "Documentation", PathCombine(GetInstallPath(), "Docs\\index.html"), "", "", 0);
-  CreateShortcut(startMenuPath, "Uninstall RetroNexus", PathCombine(GetInstallPath(), "uninstall.exe"), "", "", 0);
-  
-  // Quick Launch (if available)
-  const quickLaunchPath = GetQuickLaunchPath();
-  if (quickLaunchPath) {
-    CreateShortcut(quickLaunchPath, "RetroNexus", exePath, "", iconPath, 0);
-  }
-}
-
-// Robust error handling with diagnostics
-function CustomExceptionHandler(exceptionInfo) {
-  const exceptionCode = exceptionInfo.ExceptionRecord.ExceptionCode;
-  const exceptionAddress = exceptionInfo.ExceptionRecord.ExceptionAddress;
-  const moduleInfo = GetModuleForAddress(exceptionAddress);
-  
-  LogError(\`Unhandled exception \${FormatHex(exceptionCode)} at \${FormatHex(exceptionAddress)}\`);
-  if (moduleInfo) {
-    LogError(\`In module \${moduleInfo.name} +\${FormatHex(exceptionAddress - moduleInfo.baseAddress)}\`);
-  }
-  
-  // Create crash dump
-  CreateMiniDump(exceptionInfo);
-  
-  // Show error dialog
-  if (!IsRunningNonInteractive()) {
-    ShowCrashDialog(exceptionCode, moduleInfo);
-  }
-  
-  return EXCEPTION_EXECUTE_HANDLER;
-}
-
-// Comprehensive rollback for failed installation
-function RollbackInstallation(installStage) {
-  LogInfo("Rolling back installation from stage: " + installStage);
-  
-  switch(installStage) {
-    case "COMPLETE":
-    case "SHORTCUTS":
-      // Remove shortcuts
-      RemoveAllShortcuts();
-      // Fall through
-      
-    case "REGISTRY":
-      // Remove registry entries
-      RemoveRegistryEntries();
-      // Fall through
-      
-    case "DLLS":
-      // Unload DLLs
-      UnloadAllDLLs();
-      // Fall through
-      
-    case "FILES":
-      // Remove installed files
-      RemoveInstalledFiles();
-      // Fall through
-      
-    case "DIRECTORIES":
-      // Remove created directories
-      RemoveCreatedDirectories();
-      // Fall through
-      
-    case "BEGIN":
-      // Nothing to do
-      break;
-  }
-  
-  // Final cleanup
-  DeleteTemporaryFiles();
-  
-  LogInfo("Rollback completed");
-}
-
-// Hardware detection and optimization
-function DetectAndConfigureHardware() {
-  // CPU detection and optimization
-  const cpuInfo = GetCPUInfo();
-  ConfigureCPUOptimizations(cpuInfo);
-  
-  // GPU detection
-  const gpuInfo = GetGPUInfo();
-  const optimalSettings = DetermineOptimalGraphicsSettings(gpuInfo);
-  SaveGraphicsConfiguration(optimalSettings);
-  
-  // Audio hardware detection
-  const audioDevices = EnumerateAudioDevices();
-  ConfigureAudioSettings(audioDevices);
-  
-  // Input device detection
-  const inputDevices = EnumerateInputDevices();
-  ConfigureDefaultControllers(inputDevices);
-  
-  // Storage performance analysis
-  const storageInfo = AnalyzeStoragePerformance(GetInstallPath());
-  ConfigureCacheSettings(storageInfo);
-  
-  LogInfo("Hardware configuration complete");
-}
-
-// Main installation sequence with progress reporting
-function InstallationSequence() {
-  let installStage = "BEGIN";
-  
-  try {
-    // Initialize
-    ShowProgress("Initializing installation...", 0);
-    if (!InitializeInstaller()) {
-      throw new Error("Initialization failed");
-    }
-    
-    // Verify system requirements
-    ShowProgress("Verifying system requirements...", 5);
-    if (!VerifySystemRequirements()) {
-      throw new Error("System requirements not met");
-    }
-    
-    // Create directories
-    ShowProgress("Creating installation directories...", 10);
-    CreateInstallationDirectories();
-    installStage = "DIRECTORIES";
-    
-    // Extract files
-    ShowProgress("Extracting files...", 20);
-    ExtractFiles();
-    installStage = "FILES";
-    
-    // Install prerequisites
-    ShowProgress("Installing prerequisites...", 40);
-    InstallPrerequisites();
-    
-    // Load and initialize DLLs
-    ShowProgress("Loading components...", 60);
-    LoadAndInitializeDLLs();
-    installStage = "DLLS";
-    
-    // Configure registry
-    ShowProgress("Configuring system integration...", 70);
-    ConfigureRegistry();
-    installStage = "REGISTRY";
-    
-    // Create shortcuts
-    ShowProgress("Creating shortcuts...", 80);
-    CreateShortcuts();
-    installStage = "SHORTCUTS";
-    
-    // Detect and configure hardware
-    ShowProgress("Optimizing for your hardware...", 90);
-    DetectAndConfigureHardware();
-    
-    // Run final setup steps
-    ShowProgress("Finalizing installation...", 95);
-    FinalizingInstallation();
-    
-    // Complete
-    ShowProgress("Installation complete!", 100);
-    installStage = "COMPLETE";
-    
-    return SUCCESS;
-  } catch (error) {
-    LogError("Installation failed: " + error.message);
-    ShowError("Installation failed: " + error.message);
-    
-    // Attempt rollback
-    RollbackInstallation(installStage);
-    
-    return ERROR_INSTALLATION_FAILED;
-  }
-}
-
-// Final cleanup after successful installation
-function FinalizingInstallation() {
-  // Delete temporary files
-  DeleteTemporaryFiles();
-  
-  // Update Windows Firewall rules
-  ConfigureFirewallRules();
-  
-  // Register application with default programs
-  RegisterWithDefaultPrograms();
-  
-  // Create restore point (optional)
-  if (UserOptedForRestorePoint()) {
-    CreateSystemRestorePoint("RetroNexus Emulator Installation");
-  }
-  
-  // Send telemetry if allowed
-  if (UserAllowedTelemetry()) {
-    SendInstallationTelemetry();
-  }
-  
-  LogInfo("Installation successfully completed");
 }
 
 [RESOURCES]
 1 ICON "RetroNexus.ico"
 2 BITMAP "RetroNexus.bmp"
 1 MANIFEST "RetroNexus.manifest"
-1 VERSIONINFO
-FILEVERSION 1,2,5,482
-PRODUCTVERSION 1,2,5,482
-FILEFLAGSMASK 0x3fL
-FILEFLAGS 0x0L
-FILEOS 0x40004L
-FILETYPE 0x1L
-FILESUBTYPE 0x0L
-BEGIN
-  BLOCK "StringFileInfo"
-  BEGIN
-    BLOCK "040904b0"
-    BEGIN
-      VALUE "CompanyName", "RetroNexus Technologies Inc."
-      VALUE "FileDescription", "RetroNexus Multi-System Emulator"
-      VALUE "FileVersion", "1.2.5.482"
-      VALUE "InternalName", "RetroNexus.exe"
-      VALUE "LegalCopyright", "© 2025 RetroNexus Technologies Inc."
-      VALUE "OriginalFilename", "RetroNexus.exe"
-      VALUE "ProductName", "RetroNexus Emulator"
-      VALUE "ProductVersion", "1.2.5.482"
-    END
-  END
-  BLOCK "VarFileInfo"
-  BEGIN
-    VALUE "Translation", 0x409, 1200
-  END
-END
-
-10 RCDATA "config\\default.ini"
-11 RCDATA "config\\systems.ini"
-12 RCDATA "config\\controllers.ini"
-20 BITMAP "splash.bmp"
-30 WAVE "sounds\\startup.wav"
-31 WAVE "sounds\\complete.wav"
-40 PNG "images\\background.png"
-41 PNG "images\\logo.png"
-
-[SIGNATURE_BLOCK]
-// Digital signature (PKCS#7)
-// SHA-256 with RSA encryption
-30 82 0C 8A 06 09 2A 86 48 86 F7 0D 01 07 02 A0
-82 0C 7B 30 82 0C 77 02 01 01 31 0F 30 0D 06 09
-60 86 48 01 65 03 04 02 01 05 00 30 0B 06 09 2A
-86 48 86 F7 0D 01 07 01 A0 82 08 7D 30 82 08 79
-30 82 07 61 A0 03 02 01 02 02 14 0E F7 E7 C8 F5
-73 95 73 B6 3E 82 05 9E 76 48 A5 82 08 A4 30 0D
 `;
-    };
-
-    const createVCRedistFile = () => {
-      const content = `
-// Visual C++ Redistributable for Visual Studio 2022 (x64)
-// VC_redist.x64.exe - File Representation
-
-[PACKAGE_HEADER]
-Product: Microsoft Visual C++ 2022 Redistributable (x64)
-Version: 14.36.32532.0
-Publisher: Microsoft Corporation
-ProductCode: {2E161CFC-2CD4-4FF7-A96D-17836A6CBF1F}
-Language: 1033
-Platform: x64
-
-[EXTRACTION_INFO]
-Extract Path: %TEMP%\\VC_redist_x64
-Command Line: /install /passive /norestart
-
-[PE_HEADER]
-4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
-B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
-50 45 00 00 64 86 06 00 00 00 00 00 00 00 00 00
-
-[INCLUDED_FILES]
-vcruntime140.dll
-msvcp140.dll
-concrt140.dll
-vccorlib140.dll
-vcruntime140_1.dll
-msvcp140_1.dll
-msvcp140_2.dll
-msvcp140_atomic_wait.dll
-concrt140.dll
-vcomp140.dll
-
-[DEPENDENCIES]
-Windows 7 SP1 (x64) or later
-KB2919355 for Windows 8.1
-4GB Available Hard Drive Space
-
-[INSTALLATION_SEQUENCE]
-1. Extract package
-2. Check OS version compatibility
-3. Verify previous installations
-4. Install core runtimes
-5. Register COM components
-6. Update registry
-7. Install debug runtime if selected
-8. Cleanup temporary files
-
-[MSI_COMMANDS]
-ALLUSERS=1
-REBOOT=ReallySuppress
-REINSTALLMODE=amus
-`;
-      return new Blob([content], { type: 'text/plain' });
-    };
-
-    const createDirectX12File = () => {
-      const content = `
-// DirectX 12 Runtime Installer
-// dxsetup.exe - File Representation
-
-[PACKAGE_HEADER]
-Product: DirectX Runtime
-Version: 12.1.5341.0
-Publisher: Microsoft Corporation
-UpgradeCode: {E18ABD87-F874-49D3-B15D-6E9B79C2507C}
-
-[SUPPORTED_FEATURES]
-- DirectX 12 Ultimate
-- Ray tracing 1.1
-- Variable rate shading
-- Mesh shaders
-- DirectML support
-- DirectStorage API
-
-[PE_HEADER]
-4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
-B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
-50 45 00 00 64 86 06 00 00 00 00 00 00 00 00 00
-
-[INCLUDED_COMPONENTS]
-d3d12.dll
-d3d12core.dll
-d3d12sdklayers.dll
-dxgi.dll
-dxcore.dll
-d3dcompiler_47.dll
-DirectML.dll
-DirectStorage.dll
-
-[SYSTEM_REQUIREMENTS]
-OS: Windows 10 version 2004 (May 2020 Update) or newer
-CPU: Support for SSE2 instruction set
-GPU: WDDM 2.0 driver model or newer
-RAM: 2GB minimum
-
-[INSTALLATION_SEQUENCE]
-1. Verify OS compatibility
-2. Check installed drivers
-3. Extract DirectX components
-4. Register DLL files
-5. Update registry settings
-6. Configure GPU detection
-7. Set up debug layer if in dev mode
-
-[COMMANDS]
-/silent - Install without UI
-/verify - Verify installation only
-/repair - Repair existing installation
-`;
-      return new Blob([content], { type: 'text/plain' });
-    };
-
-    const createDLLFiles = () => {
-      const dllFiles = [
-        {
-          name: "RetroNexusCore.dll",
-          content: `
-// RetroNexusCore.dll - Core Emulation Engine
-// Version: 1.2.5.482
-
-[DLL_HEADER]
-4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
-B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
-
-[EXPORTS]
-InitializeEmulator
-ShutdownEmulator
-LoadROM
-SaveState
-LoadState
-ConfigureInput
-SetVideoMode
-GetEmulationStatus
-PauseEmulation
-ResumeEmulation
-GetPerformanceMetrics
-ConfigureAudio
-ApplyShaders
-CaptureScreenshot
-
-[DEPENDENCIES]
-KERNEL32.dll
-USER32.dll
-d3d12.dll
-xinput1_4.dll
-dxgi.dll
-vcruntime140.dll
-msvcp140.dll
-
-[VERSION_INFO]
-CompanyName: RetroNexus Technologies
-FileDescription: RetroNexus Core Emulation Engine
-LegalCopyright: © 2025 RetroNexus Technologies Inc.
-ProductName: RetroNexus Emulator
-`
-        },
-        {
-          name: "EmulationEngine.dll",
-          content: `
-// EmulationEngine.dll - Hardware Abstraction Layer
-// Version: 1.2.5.482
-
-[DLL_HEADER]
-4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
-B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
-
-[EXPORTS]
-CreateEmulationContext
-DestroyEmulationContext
-ExecuteCPUCycle
-MapMemory
-ReadMemory
-WriteMemory
-HandleInterrupt
-RegisterIODevice
-ProcessGraphics
-RunAudioCycle
-InitializeBIOS
-GetSystemTime
-DetectPeripherals
-ConfigurePeripherals
-
-[DEPENDENCIES]
-KERNEL32.dll
-RetroNexusCore.dll
-HardwareAcceleration.dll
-d3d12.dll
-vcruntime140.dll
-msvcp140.dll
-
-[VERSION_INFO]
-CompanyName: RetroNexus Technologies
-FileDescription: RetroNexus Emulation Engine
-LegalCopyright: © 2025 RetroNexus Technologies Inc.
-ProductName: RetroNexus Emulator
-`
-        },
-        {
-          name: "HardwareAcceleration.dll",
-          content: `
-// HardwareAcceleration.dll - GPU Acceleration Layer
-// Version: 1.2.5.482
-
-[DLL_HEADER]
-4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
-B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
-
-[EXPORTS]
-InitializeGPU
-ShutdownGPU
-CreateRenderTarget
-DestroyRenderTarget
-BeginFrame
-EndFrame
-UploadTexture
-RenderGeometry
-ApplyPostProcessing
-ConfigureShaders
-DetectGPUCapabilities
-SetVSync
-EnableRayTracing
-SetResolution
-ApplyAnisotropicFiltering
-
-[DEPENDENCIES]
-KERNEL32.dll
-USER32.dll
-d3d12.dll
-dxgi.dll
-d3dcompiler_47.dll
-nvapi64.dll
-amdgpu_drv.dll
-vcruntime140.dll
-
-[GPU_REQUIREMENTS]
-Minimum: NVIDIA GeForce RTX 4060 / AMD RX 7600
-DirectX: Version 12
-Shader Model: 6.6
-VRAM: 8GB minimum
-
-[VERSION_INFO]
-CompanyName: RetroNexus Technologies
-FileDescription: RetroNexus Hardware Acceleration
-LegalCopyright: © 2025 RetroNexus Technologies Inc.
-ProductName: RetroNexus Emulator
-`
-        },
-        {
-          name: "InputManager.dll",
-          content: `
-// InputManager.dll - Input Device Management
-// Version: 1.2.5.482
-
-[DLL_HEADER]
-4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
-B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
-
-[EXPORTS]
-InitializeInput
-ShutdownInput
-PollDevices
-RegisterController
-UnregisterController
-MapInput
-SaveInputProfile
-LoadInputProfile
-DetectControllers
-ConfigureDeadzone
-SetRumble
-ProcessRawInput
-GetDeviceCapabilities
-AutoConfigure
-
-[SUPPORTED_DEVICES]
-- Xbox Controllers (XInput)
-- DualSense / DualShock 4 (DirectInput)
-- Nintendo Switch Pro Controller
-- Generic DirectInput Controllers
-- Keyboard and Mouse
-- Arcade Controllers
-- Custom USB Devices
-
-[DEPENDENCIES]
-KERNEL32.dll
-USER32.dll
-xinput1_4.dll
-dinput8.dll
-hidclass.dll
-vcruntime140.dll
-
-[VERSION_INFO]
-CompanyName: RetroNexus Technologies
-FileDescription: RetroNexus Input Management
-LegalCopyright: © 2025 RetroNexus Technologies Inc.
-ProductName: RetroNexus Emulator
-`
-        },
-        {
-          name: "PhysicsEngine.dll",
-          content: `
-// PhysicsEngine.dll - Physics Simulation Layer
-// Version: 1.2.5.482
-
-[DLL_HEADER]
-4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
-B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
-
-[EXPORTS]
-InitializePhysics
-ShutdownPhysics
-UpdatePhysicsWorld
-CreateRigidBody
-DestroyRigidBody
-ApplyForce
-SetGravity
-DetectCollisions
-ResolveContacts
-SimulateParticles
-SetPhysicsMaterial
-GetPhysicsStats
-EnableRagdoll
-DisableRagdoll
-
-[DEPENDENCIES]
-KERNEL32.dll
-RetroNexusCore.dll
-DirectXMath.dll
-vcruntime140.dll
-msvcp140.dll
-
-[VERSION_INFO]
-CompanyName: RetroNexus Technologies
-FileDescription: RetroNexus Physics Engine
-LegalCopyright: © 2025 RetroNexus Technologies Inc.
-ProductName: RetroNexus Emulator
-`
-        },
-        {
-          name: "ShaderCompiler.dll",
-          content: `
-// ShaderCompiler.dll - Real-time Shader Processing
-// Version: 1.2.5.482
-
-[DLL_HEADER]
-4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
-B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
-
-[EXPORTS]
-CompileShader
-OptimizeShader
-LoadShaderProgram
-CreateShaderCache
-ValidateShader
-GetCompilerVersion
-SetOptimizationLevel
-EnableDebugInfo
-LoadShaderLibrary
-GetShaderError
-PreprocessShader
-GenerateMipChain
-
-[DEPENDENCIES]
-d3dcompiler_47.dll
-dxil.dll
-RetroNexusCore.dll
-HardwareAcceleration.dll
-
-[VERSION_INFO]
-CompanyName: RetroNexus Technologies
-FileDescription: RetroNexus Shader Compiler
-LegalCopyright: © 2025 RetroNexus Technologies Inc.
-ProductName: RetroNexus Emulator
-`
-        }
-      ];
-
-      return dllFiles;
-    };
-
-    const createConfigFiles = () => {
-      const mainConfig = `
-# RetroNexus Configuration File
-# Version 1.2.5
-# DO NOT MODIFY THIS FILE MANUALLY unless you know what you're doing
-
-[Core]
-ThreadCount=16
-MemoryLimit=8192
-EnableLogging=true
-LogLevel=1
-TelemetryEnabled=false
-AutoUpdateEnabled=true
-SaveStateCompression=true
-RewindBufferSize=128
-RewindFrameInterval=10
-FastForwardSpeed=3.0
-SlowMotionSpeed=0.5
-PauseWhenInBackground=true
-EnableCheats=false
-
-[Graphics]
-Backend=DirectX12
-Resolution=native
-AspectRatio=auto
-VSync=true
-Fullscreen=false
-IntegerScaling=false
-CRTShader=none
-BilinearFiltering=true
-AnisotropicFiltering=16
-AntiAliasing=fxaa
-RenderingThreads=4
-EnableRayTracing=true
-RayTracingQuality=medium
-TextureCache=512
-
-[Audio]
-Backend=XAudio2
-BufferSize=2048
-SampleRate=48000
-Channels=2
-SyncMode=dynamic
-Volume=80
-Latency=medium
-EnableResampling=true
-DSPEnhancements=true
-SurroundSound=false
-
-[Input]
-Backend=XInput
-DetectControllers=true
-ControllerPollRate=16
-EnableRumble=true
-DeadzoneStick=0.10
-DeadzoneTrigger=0.12
-ProfilesDirectory=profiles
-AutoSaveProfiles=true
-EnableHotkeys=true
-
-[Paths]
-ROMs=C:\\RetroNexus\\Games\\ROMs
-ISOs=C:\\RetroNexus\\Games\\ISOs
-SaveStates=C:\\RetroNexus\\SaveStates
-SaveFiles=C:\\RetroNexus\\SaveData
-Screenshots=C:\\RetroNexus\\Screenshots
-Recordings=C:\\RetroNexus\\Recordings
-Shaders=C:\\RetroNexus\\Shaders
-Textures=C:\\RetroNexus\\Textures
-
-[Network]
-EnableNetplay=true
-NetplayPort=45673
-PreferredServer=auto
-NetworkFrameDelay=2
-SpectatorEnabled=true
-MatchmakingRegion=auto
-PunchThroughEnabled=true
-MaxPlayers=8
-AutoSaveReplay=false
-
-[Optimization]
-EnableDynamicRecompilation=true
-DynarecBufferSize=65536
-IdleSleep=1
-EnableMulticoreEmulation=true
-ThreadScheduler=auto
-PowerPlan=balanced
-PriorityClass=high
-OptimizeForPerformance=true
-
-[Advanced]
-EnableConsole=false
-DisableScreensaver=true
-ConfigVersion=125
-BuildDate=2025-04-16
-BuildType=release
-SkipBIOSIntro=false
-MemcardSizeKB=8192
-EnableBlitFramebuffer=true
-UseMMIOCache=true
-FastBoot=true
-`;
-
-      const biosConfig = `
-# RetroNexus BIOS Configuration
-# Version 1.2.5
-# This configuration controls the custom BIOS functionality
-
-[Core]
-Version=1.2.5.482
-BuildDate=2025-04-16
-SerialNumber=RN-${Math.random().toString(36).substring(2, 10).toUpperCase()}
-EnableCustomLogo=true
-BootDelay=5
-AccessKeys=DEL,F2,F12
-BootSound=enabled
-FailsafeMode=false
-VerboseBootLog=false
-
-[Hardware]
-CPUCheck=true
-GPUCheck=true
-RAMCheck=true
-StorageCheck=true
-NetworkCheck=true
-AudioCheck=true
-InputCheck=true
-RequireMinimumSpecs=true
-
-[BootSequence]
-Stage1Delay=500
-Stage2Delay=800
-Stage3Delay=300
-AnimationEnabled=true
-TestPattern=false
-ShowDetailedInfo=true
-FastBootEnabled=true
-
-[Security]
-SecureBoot=true
-EnableTPM=auto
-VerifySystemFiles=true
-RequireSignature=false
-AllowCustomPatches=true
-BIOSLockEnabled=false
-AdminPassword=
-
-[Interface]
-Theme=retro
-ColorScheme=blue
-BackgroundColor=#000022
-TextColor=#33FFFF
-HighlightColor=#FF00FF
-SelectionColor=#FFFFFF
-FontSize=14
-EnableScanlines=true
-EnableGlow=true
-EnableBlur=false
-EnableCursor=true
-CursorBlinkRate=800
-MenuTimeoutSec=60
-ItemsPerPage=12
-
-[EmulationSystems]
-NES=enabled
-SNES=enabled
-Genesis=enabled
-N64=enabled
-PSX=enabled
-PS2=enabled
-Dreamcast=enabled
-GameCube=enabled
-GBA=enabled
-NDS=enabled
-PSP=enabled
-Saturn=enabled
-
-[Diagnostics]
-RunSelfTest=true
-ShowTemperature=true
-MonitorVoltage=true
-CheckDiskErrors=true
-MemoryTestLevel=basic
-GPUStressTest=false
-DialogTimeout=30
-`;
-
-      return { mainConfig, biosConfig };
-    };
-
-    zip.file('RetroNexus.exe', createWindowsExecutableText());
-    zip.file('VC_redist.x64.exe', createVCRedistFile());
-    zip.file('dxsetup.exe', createDirectX12File());
-    zip.file('RetroNexusCore.dll', createDLLFiles()[0].content);
-    zip.file('EmulationEngine.dll', createDLLFiles()[1].content);
-    zip.file('HardwareAcceleration.dll', createDLLFiles()[2].content);
-    zip.file('InputManager.dll', createDLLFiles()[3].content);
-    zip.file('PhysicsEngine.dll', createDLLFiles()[4].content);
-    zip.file('ShaderCompiler.dll', createDLLFiles()[5].content);
-    zip.file('RetroNexusConfig.ini', createConfigFiles().mainConfig);
-    zip.file('RetroNexusBIOS.ini', createConfigFiles().biosConfig);
-
-    return zip.generateAsync({ type: 'blob' });
-  } catch (error) {
-    console.error('Error creating executable package:', error);
-    throw error;
-  }
 };
+
+const createLauncherExe = () => {
+  return `
+// RetroNexus Launcher.exe
+// Version: 1.2.5.482
+// Copyright © 2025 RetroNexus Technologies Inc.
+
+[MZ_HEADER]
+4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
+B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
+
+[PE_HEADER]
+50 45 00 00 64 86 06 00 4C 01 02 00 00 00 00 00
+00 00 00 00 F0 00 22 02 0B 02 0E 1C 00 00 00 00
+
+[IMPORTS]
+KERNEL32.dll
+USER32.dll
+SHELL32.dll
+Updater.exe
+Emulator.exe
+
+[MAIN]
+// Main launcher entry point
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+  // Check for updates
+  if (ShouldCheckForUpdates()) {
+    RunUpdater("/silent");
+  }
+  
+  // Load game library database
+  LoadGameLibrary();
+  
+  // Create launcher window
+  CreateLauncherWindow(hInstance, nCmdShow);
+  
+  // Main message loop
+  MSG msg;
+  while (GetMessage(&msg, NULL, 0, 0)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+  
+  return msg.wParam;
+}
+
+// Launch game function
+bool LaunchGame(const char* romPath, const char* systemType) {
+  // Prepare command line
+  char cmdLine[1024];
+  sprintf(cmdLine, "Emulator.exe /system:%s /rom:\"%s\"", systemType, romPath);
+  
+  // Create process
+  STARTUPINFO si = {0};
+  PROCESS_INFORMATION pi = {0};
+  si.cb = sizeof(STARTUPINFO);
+  
+  if (!CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    ShowErrorDialog("Failed to launch game");
+    return false;
+  }
+  
+  return true;
+}
+
+[RESOURCES]
+1 ICON "Launcher.ico"
+2 BITMAP "Splash.bmp"
+3 BITMAP "Background.bmp"
+`;
+};
+
+const createUpdaterExe = () => {
+  return `
+// RetroNexus Updater.exe
+// Version: 1.2.5.482
+// Copyright © 2025 RetroNexus Technologies Inc.
+
+[MZ_HEADER]
+4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
+B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
+
+[PE_HEADER]
+50 45 00 00 64 86 06 00 4C 01 02 00 00 00 00 00
+00 00 00 00 F0 00 22 02 0B 02 0E 1C 00 00 00 00
+
+[IMPORTS]
+KERNEL32.dll
+USER32.dll
+WININET.dll
+URLMON.dll
+
+[MAIN]
+// Main updater entry point
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+  bool silentMode = (strstr(lpCmdLine, "/silent") != NULL);
+  
+  // Check current version
+  char currentVersion[32];
+  if (!GetCurrentVersion(currentVersion)) {
+    if (!silentMode) {
+      ShowErrorDialog("Failed to determine current version");
+    }
+    return 1;
+  }
+  
+  // Check for updates from server
+  UpdateInfo updateInfo;
+  if (!CheckForUpdates(currentVersion, &updateInfo)) {
+    if (!silentMode) {
+      ShowErrorDialog("Failed to check for updates");
+    }
+    return 1;
+  }
+  
+  // If no updates available
+  if (!updateInfo.updateAvailable) {
+    if (!silentMode) {
+      ShowInfoDialog("No updates available", "You are running the latest version of RetroNexus.");
+    }
+    return 0;
+  }
+  
+  // If update available but silent mode is disabled, show update dialog
+  if (!silentMode) {
+    char message[256];
+    sprintf(message, "An update is available: v%s\n\nDo you want to update now?", updateInfo.latestVersion);
+    
+    if (ShowConfirmDialog("Update Available", message) != IDYES) {
+      return 0;
+    }
+  }
+  
+  // Download and install update
+  if (!DownloadAndInstallUpdate(&updateInfo, silentMode)) {
+    if (!silentMode) {
+      ShowErrorDialog("Failed to install update");
+    }
+    return 1;
+  }
+  
+  // Restart application if needed
+  if (updateInfo.requiresRestart) {
+    // Restart main application
+    RestartApplication();
+  }
+  
+  return 0;
+}
+
+[RESOURCES]
+1 ICON "Updater.ico"
+2 BITMAP "UpdateProgress.bmp"
+`;
+};
+
+const createCrashHandlerExe = () => {
+  return `
+// RetroNexus CrashHandler.exe
+// Version: 1.2.5.482
+// Copyright © 2025 RetroNexus Technologies Inc.
+
+[MZ_HEADER]
+4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
+B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
+
+[PE_HEADER]
+50 45 00 00 64 86 06 00 4C 01 02 00 00 00 00 00
+00 00 00 00 F0 00 22 02 0B 02 0E 1C 00 00 00 00
+
+[IMPORTS]
+KERNEL32.dll
+USER32.dll
+DBGHELP.dll
+SHELL32.dll
+
+[MAIN]
+// Main crash handler entry point
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+  // Parse command line
+  char dumpPath[MAX_PATH] = {0};
+  DWORD processId = 0;
+  ParseCrashHandlerArgs(lpCmdLine, &processId, dumpPath);
+  
+  if (processId == 0) {
+    ShowErrorDialog("Invalid process ID provided");
+    return 1;
+  }
+  
+  // Open process handle
+  HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
+  if (hProcess == NULL) {
+    ShowErrorDialog("Failed to open process");
+    return 1;
+  }
+  
+  // Create mini dump
+  if (!CreateMiniDump(hProcess, dumpPath)) {
+    ShowErrorDialog("Failed to create crash dump");
+    CloseHandle(hProcess);
+    return 1;
+  }
+  
+  // Close process handle
+  CloseHandle(hProcess);
+  
+  // Show crash dialog
+  ShowCrashDialog(dumpPath);
+  
+  return 0;
+}
+
+// Create mini dump
+bool CreateMiniDump(HANDLE hProcess, const char* dumpPath) {
+  HANDLE hFile = CreateFile(dumpPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (hFile == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+  
+  MINIDUMP_EXCEPTION_INFORMATION exInfo;
+  exInfo.ThreadId = GetThreadId(hProcess);
+  exInfo.ExceptionPointers = NULL;
+  exInfo.ClientPointers = FALSE;
+  
+  BOOL result = MiniDumpWriteDump(
+    hProcess,
+    GetProcessId(hProcess),
+    hFile,
+    MiniDumpNormal,
+    &exInfo,
+    NULL,
+    NULL
+  );
+  
+  CloseHandle(hFile);
+  return (result == TRUE);
+}
+
+// Show crash dialog
+void ShowCrashDialog(const char* dumpPath) {
+  char message[1024];
+  sprintf(message, 
+    "RetroNexus has encountered an unexpected error and needs to close.\n\n"
+    "A crash report has been created at:\n%s\n\n"
+    "Would you like to submit this report to help improve RetroNexus?",
+    dumpPath
+  );
+  
+  int result = MessageBox(NULL, message, "RetroNexus Crash Report", MB_YESNO | MB_ICONERROR);
+  if (result == IDYES) {
+    SubmitCrashReport(dumpPath);
+  }
+}
+
+[RESOURCES]
+1 ICON "CrashHandler.ico"
+`;
+};
+
+const createSetupExe = () => {
+  return `
+// RetroNexus Setup.exe
+// Version: 1.2.5.482
+// Copyright © 2025 RetroNexus Technologies Inc.
+
+[MZ_HEADER]
+4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
+B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
+
+[PE_HEADER]
+50 45 00 00 64 86 06 00 4C 01 02 00 00 00 00 00
+00 00 00 00 F0 00 22 02 0B 02 0E 1C 00 00 00 00
+
+[IMPORTS]
+KERNEL32.dll
+USER32.dll
+COMCTL32.dll
+ADVAPI32.dll
+SHELL32.dll
+
+[MAIN]
+// Main setup entry point
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+  // Check admin rights
+  if (!IsRunAsAdmin()) {
+    // Relaunch with admin rights
+    RelaunwithAdminRights();
+    return 0;
+  }
+  
+  // Initialize common controls
+  InitCommonControls();
+  
+  // Create setup dialog
+  DialogBox(hInstance, MAKEINTRESOURCE(IDD_SETUP_DIALOG), NULL, SetupDialogProc);
+  
+  return 0;
+}
+
+// Setup wizard procedure
+INT_PTR CALLBACK SetupDialogProc(HWND hwndDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+  static SetupState setupState = {0};
+  
+  switch (message) {
+    case WM_INITDIALOG:
+      // Initialize dialog and setup state
+      InitializeSetupDialog(hwndDlg, &setupState);
+      return TRUE;
+    
+    case WM_COMMAND:
+      switch (LOWORD(wParam)) {
+        case IDC_NEXT_BUTTON:
+          return HandleNextButton(hwndDlg, &setupState);
+        
+        case IDC_BACK_BUTTON:
+          return HandleBackButton(hwndDlg, &setupState);
+        
+        case IDC_CANCEL_BUTTON:
+          if (ShowConfirmDialog("Cancel Setup", "Are you sure you want to cancel installation?") == IDYES) {
+            EndDialog(hwndDlg, 0);
+          }
+          return TRUE;
+        
+        case IDC_BROWSE_BUTTON:
+          BrowseForInstallationFolder(hwndDlg, &setupState);
+          return TRUE;
+      }
+      break;
+    
+    case WM_NOTIFY:
+      return HandleSetupNotifications(hwndDlg, wParam, lParam, &setupState);
+    
+    case WM_CLOSE:
+      if (ShowConfirmDialog("Cancel Setup", "Are you sure you want to cancel installation?") == IDYES) {
+        EndDialog(hwndDlg, 0);
+      }
+      return TRUE;
+  }
+  
+  return FALSE;
+}
+
+// System requirements check
+bool CheckSystemRequirements() {
+  SYSTEM_INFO sysInfo;
+  GetSystemInfo(&sysInfo);
+  
+  // Check processor
+  if (sysInfo.dwNumberOfProcessors < 4) {
+    return false;
+  }
+  
+  // Check memory
+  MEMORYSTATUSEX memInfo;
+  memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+  GlobalMemoryStatusEx(&memInfo);
+  
+  if (memInfo.ullTotalPhys < 8ULL * 1024 * 1024 * 1024) {
+    return false;
+  }
+  
+  // Check disk space
+  ULARGE_INTEGER freeBytesAvailable;
+  if (!GetDiskFreeSpaceEx(NULL, &freeBytesAvailable, NULL, NULL)) {
+    return false;
+  }
+  
+  if (freeBytesAvailable.QuadPart < 50ULL * 1024 * 1024 * 1024) {
+    return false;
+  }
+  
+  // Check DirectX version
+  if (!CheckDirectXVersion(12)) {
+    return false;
+  }
+  
+  return true;
+}
+
+// Installation wizard steps
+bool PerformInstallation(SetupState* state) {
+  // Create directories
+  CreateInstallationDirectories(state->installPath);
+  
+  // Copy files
+  CopyInstallationFiles(state->installPath, state->selectedComponents);
+  
+  // Register file associations
+  if (state->registerFileAssociations) {
+    RegisterFileAssociations();
+  }
+  
+  // Create shortcuts
+  if (state->createDesktopShortcut) {
+    CreateDesktopShortcut(state->installPath);
+  }
+  
+  if (state->createStartMenuShortcuts) {
+    CreateStartMenuShortcuts(state->installPath);
+  }
+  
+  // Register uninstaller
+  RegisterUninstaller(state->installPath);
+  
+  return true;
+}
+
+[RESOURCES]
+1 ICON "Setup.ico"
+2 BITMAP "Banner.bmp"
+3 BITMAP "Welcome.bmp"
+4 BITMAP "Complete.bmp"
+5 DIALOG IDD_SETUP_DIALOG
+6 DIALOG IDD_LICENSE_DIALOG
+7 DIALOG IDD_COMPONENTS_DIALOG
+8 DIALOG IDD_PROGRESS_DIALOG
+9 DIALOG IDD_COMPLETE_DIALOG
+10 RCDATA "license.rtf"
+`;
+};
+
+const createSystemCoreDll = (system: string) => {
+  const systemNames: Record<string, string> = {
+    nes: 'Nintendo Entertainment System',
+    snes: 'Super Nintendo Entertainment System',
+    genesis: 'Sega Genesis/Mega Drive',
+    n64: 'Nintendo 64',
+    ps1: 'PlayStation',
+    ps2: 'PlayStation 2',
+    dreamcast: 'Sega Dreamcast',
+    gamecube: 'Nintendo GameCube',
+    gba: 'Game Boy Advance',
+    nds: 'Nintendo DS',
+    psp: 'PlayStation Portable',
+    saturn: 'Sega Saturn',
+    wii: 'Nintendo Wii'
+  };
+
+  const fullName = systemNames[system] || system.toUpperCase();
+  
+  return `
+// RetroNexus ${fullName} Core DLL
+// Version: 1.2.5.482
+// Copyright © 2025 RetroNexus Technologies Inc.
+
+[DLL_HEADER]
+4D 5A 90 00 03 00 00 00 04 00 00 00 FF FF 00 00
+B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
+
+[EXPORTS]
+Initialize${system.toUpperCase()}Core
+Shutdown${system.toUpperCase()}Core
+Load${system.toUpperCase()}ROM
+Execute${system.toUpperCase()}Frame
+Reset${system.toUpperCase()}System
+Get${system.toUpperCase()}MemoryMap
+Set${system.toUpperCase()}Region
+Get${system.toUpperCase()}ScreenWidth
+Get${system.toUpperCase()}ScreenHeight
+Save${system.toUpperCase()}State
+Load${system.toUpperCase()}State
+Configure${system.toUpperCase()}Input
+
+[DEPENDENCIES]
+KERNEL32.dll
+USER32.dll
+RetroNexusCore.dll
+EmulationEngine.dll
+
+[VERSION_INFO]
+CompanyName: RetroNexus Technologies
+FileDescription: RetroNexus ${fullName} Emulation Core
+LegalCopyright: © 2025 RetroNexus Technologies Inc.
+ProductName: RetroNexus Emulator
+FileVersion: 1.2.5.482
+ProductVersion: 1.2.5.482
+`;
+};
+
+const createFolderReadme = (folder: string

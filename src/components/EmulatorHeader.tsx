@@ -1,12 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { createExecutablePackage } from '@/utils/setupUtils';
+import EmulatorSetupWizard from './EmulatorSetupWizard';
 
 const EmulatorHeader: React.FC = () => {
+  const [setupWizardOpen, setSetupWizardOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  
   const handleDownloadClick = async () => {
+    setIsDownloading(true);
     toast.info('Preparing RetroNexus package...', {
       description: 'Bundling emulator core, BIOS files, and required dependencies.',
       duration: 2000,
@@ -21,16 +26,16 @@ const EmulatorHeader: React.FC = () => {
         });
         
         setTimeout(() => {
-          // Generate the executable package with embedded setup wizard
+          // Generate the expanded executable package with full directory structure
           createExecutablePackage()
             .then(content => {
               const url = URL.createObjectURL(content);
               const link = document.createElement('a');
               link.href = url;
-              link.download = 'RetroNexus-Setup-Files.zip';
+              link.download = 'RetroNexus-Setup-Complete.zip';
               
               toast.success('Download ready!', {
-                description: 'RetroNexus-Setup-Files.zip\nIncludes: Installation scripts, configuration files, and .txt versions of binary files',
+                description: 'RetroNexus-Setup-Complete.zip includes:\n• Emulator.exe, Launcher.exe, Updater.exe\n• Core DLL files and folder structure\n• Essential BIOS files and configuration',
               });
               
               // Start download
@@ -41,17 +46,33 @@ const EmulatorHeader: React.FC = () => {
               setTimeout(() => {
                 URL.revokeObjectURL(url);
                 document.body.removeChild(link);
+                setIsDownloading(false);
                 
                 // Show follow-up information
                 setTimeout(() => {
                   toast.info('Installation instructions', {
-                    description: 'Extract the ZIP and run install.bat or install.ps1 with administrative privileges'
+                    description: 'Extract the ZIP and run Setup.exe with administrative privileges to complete installation'
                   });
+                  
+                  // Offer to open setup wizard
+                  setTimeout(() => {
+                    toast(
+                      'Need detailed setup instructions?',
+                      {
+                        action: {
+                          label: 'Open Setup Wizard',
+                          onClick: () => setSetupWizardOpen(true)
+                        },
+                        duration: 8000,
+                      }
+                    );
+                  }, 2000);
                 }, 1000);
               }, 100);
             })
             .catch(error => {
               console.error("Error creating executable package:", error);
+              setIsDownloading(false);
               toast.error("Failed to create download package", {
                 description: "Please try again or contact support."
               });
@@ -60,6 +81,7 @@ const EmulatorHeader: React.FC = () => {
       }, 1000);
     } catch (error) {
       console.error("Download error:", error);
+      setIsDownloading(false);
       toast.error("Download process failed", {
         description: "An unexpected error occurred. Please try again."
       });
@@ -86,14 +108,31 @@ const EmulatorHeader: React.FC = () => {
           </div>
         </div>
         
-        <Button 
-          onClick={handleDownloadClick}
-          className="bg-gradient-to-r from-emulator-accent to-emulator-accent-secondary text-black font-bold py-2 px-6 clip-download-button animate-pulse-glow"
-        >
-          <Download size={18} className="mr-2" />
-          Download Windows Setup Package
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={() => setSetupWizardOpen(true)}
+            className="bg-emulator-button border-emulator-highlight text-emulator-text hover:bg-emulator-button/80 transition-colors"
+            disabled={isDownloading}
+          >
+            <Settings size={18} className="mr-2" />
+            Setup Wizard
+          </Button>
+          
+          <Button 
+            onClick={handleDownloadClick}
+            className="bg-gradient-to-r from-emulator-accent to-emulator-accent-secondary text-black font-bold py-2 px-6 clip-download-button animate-pulse-glow"
+            disabled={isDownloading}
+          >
+            <Download size={18} className="mr-2" />
+            {isDownloading ? 'Preparing...' : 'Download Windows Package'}
+          </Button>
+        </div>
       </header>
+      
+      <EmulatorSetupWizard 
+        open={setupWizardOpen} 
+        onOpenChange={setSetupWizardOpen}
+      />
     </div>
   );
 };
