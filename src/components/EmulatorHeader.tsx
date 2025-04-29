@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Settings } from 'lucide-react';
 import { toast } from 'sonner';
-import { createExecutablePackage } from '@/utils/setupUtils';
+import { createExecutablePackage } from '@/utils/packageGenerator/packageBuilder';
 import EmulatorSetupWizard from './EmulatorSetupWizard';
 
 const EmulatorHeader: React.FC = () => {

@@ -13,7 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from 'sonner';
-import { createExecutablePackage, windowsRequirements } from '@/utils/setupUtils';
+import { windowsRequirements } from '@/utils/setupData';
+import { createExecutablePackage } from '@/utils/packageGenerator/packageBuilder';
 
 interface EmulatorSetupWizardProps {
   open: boolean;
