@@ -29,11 +29,3 @@ export type {
   SetupFile,
   InstallLocation
 };
-
-/**
- * Creates a README file for a specific folder
- */
-const createFolderReadme = (folder: string): string => {
-  // Implementation will be added later
-  return `# ${folder.toUpperCase()} Folder\n\nThis folder is used for ${folder} files in RetroNexus.`;
-};

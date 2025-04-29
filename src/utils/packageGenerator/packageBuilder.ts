@@ -34,7 +34,15 @@ export const createExecutablePackage = async (): Promise<Blob> => {
   try {
     const zip = new JSZip();
     
-    // Add main executable files
+    // Create folder structure first
+    const folders = createFolderStructure(zip);
+    
+    // Add readme files to each folder
+    folders.forEach(folder => {
+      zip.file(`${folder}/readme.txt`, createFolderReadme(folder));
+    });
+    
+    // Add main executable files to root directory
     zip.file('RetroNexus.exe', createWindowsExecutableText());
     zip.file('Emulator.exe', createEmulatorExe());
     zip.file('Launcher.exe', createLauncherExe());
@@ -42,26 +50,32 @@ export const createExecutablePackage = async (): Promise<Blob> => {
     zip.file('CrashHandler.exe', createCrashHandlerExe());
     zip.file('Setup.exe', createSetupExe());
     
-    // Add support files
-    zip.file('VC_redist.x64.exe', createVCRedistFile());
-    zip.file('dxsetup.exe', createDirectX12File());
+    // Add support files to appropriate folders
+    zip.file('tools/VC_redist.x64.exe', createVCRedistFile());
+    zip.file('tools/dxsetup.exe', createDirectX12File());
     
-    // Create DLL files
+    // Create DLL files and place them in the appropriate folders
     createDLLFiles().forEach(dll => {
-      zip.file(dll.name, dll.content);
+      if (dll.name.includes('Core') || dll.name.includes('Engine') || dll.name.includes('Hardware')) {
+        zip.file(`cores/${dll.name}`, dll.content);
+      } else if (dll.name.includes('Rendering') || dll.name.includes('Shader') || dll.name.includes('Texture')) {
+        zip.file(`shaders/${dll.name}`, dll.content);
+      } else if (dll.name.includes('Audio')) {
+        zip.file(`audio/${dll.name}`, dll.content);
+      } else if (dll.name.includes('Input') || dll.name.includes('Controller')) {
+        zip.file(`input_profiles/${dll.name}`, dll.content);
+      } else if (dll.name.includes('Network') || dll.name.includes('Netplay')) {
+        zip.file(`netplay/${dll.name}`, dll.content);
+      } else {
+        // Default location for other DLLs
+        zip.file(`libs/${dll.name}`, dll.content);
+      }
     });
     
     // Create main configuration files
     const configs = createConfigFiles();
-    zip.file('RetroNexusConfig.ini', configs.mainConfig);
-    zip.file('RetroNexusBIOS.ini', configs.biosConfig);
-    
-    // Create folder structure with readme files in each
-    const folders = createFolderStructure(zip);
-    
-    folders.forEach(folder => {
-      zip.file(`${folder}/readme.txt`, createFolderReadme(folder));
-    });
+    zip.file('configs/RetroNexusConfig.ini', configs.mainConfig);
+    zip.file('configs/RetroNexusBIOS.ini', configs.biosConfig);
     
     // Add sample files for certain folders
     zip.file('configs/default.ini', createSampleConfigFile());
@@ -80,12 +94,16 @@ export const createExecutablePackage = async (): Promise<Blob> => {
     zip.file('cores/bios/dreamcast_bios.bin', createDummyBiosFile('Dreamcast BIOS'));
     zip.file('cores/bios/gba_bios.bin', createDummyBiosFile('Game Boy Advance BIOS'));
     
-    // Add system-specific cores
+    // Add system-specific cores for each supported system
     const systems = ['nes', 'snes', 'genesis', 'n64', 'ps1', 'ps2', 'dreamcast', 
                     'gamecube', 'gba', 'nds', 'psp', 'saturn', 'wii'];
     
     systems.forEach(system => {
-      zip.file(`cores/${system}_core.dll`, createSystemCoreDll(system));
+      zip.file(`cores/systems/${system}/${system}_core.dll`, createSystemCoreDll(system));
+      // Add system-specific bios file too
+      if (!['genesis', 'snes'].includes(system)) { // These systems don't require BIOS
+        zip.file(`cores/bios/${system}_bios.bin`, createDummyBiosFile(`${system.toUpperCase()} BIOS`));
+      }
     });
 
     return zip.generateAsync({ type: 'blob' });
