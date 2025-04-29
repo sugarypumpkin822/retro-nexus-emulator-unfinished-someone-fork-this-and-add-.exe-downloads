@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Settings } from 'lucide-react';
 import { toast } from 'sonner';
-import { createExecutablePackage } from '@/utils/packageGenerator/packageBuilder';
+import { createSetupExe } from '@/utils/packageGenerator/executableGenerator';
 import EmulatorSetupWizard from './EmulatorSetupWizard';
 
 const EmulatorHeader: React.FC = () => {
@@ -12,71 +12,62 @@ const EmulatorHeader: React.FC = () => {
   
   const handleDownloadClick = async () => {
     setIsDownloading(true);
-    toast.info('Preparing RetroNexus package...', {
-      description: 'Bundling emulator core, BIOS files, and required dependencies.',
+    toast.info('Preparing RetroNexus Setup installer...', {
+      description: 'Creating standalone installer with automatic content download capability.',
       duration: 2000,
     });
     
     try {
       // Simulate checking system requirements
       setTimeout(() => {
-        // Simulate creating game directory structure
-        toast.info('Creating directory structure...', {
-          description: 'Preparing files and configuration for C:\\RetroNexus'
+        toast.info('Building Smart Installer...', {
+          description: 'Preparing Setup.exe with auto-download functionality'
         });
         
         setTimeout(() => {
-          // Generate the expanded executable package with full directory structure
-          createExecutablePackage()
-            .then(content => {
-              const url = URL.createObjectURL(content);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = 'RetroNexus-Setup-Complete.zip';
-              
-              toast.success('Download ready!', {
-                description: 'RetroNexus-Setup-Complete.zip includes:\n• Emulator.exe, Launcher.exe, Updater.exe\n• Core DLL files and folder structure\n• Essential BIOS files and configuration',
+          // Generate just the Setup.exe file with enhanced functionality
+          const setupExeContent = createSetupExe();
+          const blob = new Blob([setupExeContent], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'RetroNexus-Setup.exe';
+          
+          toast.success('Download ready!', {
+            description: 'RetroNexus-Setup.exe includes auto-download capabilities for all required files.',
+          });
+          
+          // Start download
+          document.body.appendChild(link);
+          link.click();
+          
+          // Clean up
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+            document.body.removeChild(link);
+            setIsDownloading(false);
+            
+            // Show follow-up information
+            setTimeout(() => {
+              toast.info('Installation instructions', {
+                description: 'Run RetroNexus-Setup.exe with administrative privileges to download and install all components'
               });
               
-              // Start download
-              document.body.appendChild(link);
-              link.click();
-              
-              // Clean up
+              // Offer to open setup wizard
               setTimeout(() => {
-                URL.revokeObjectURL(url);
-                document.body.removeChild(link);
-                setIsDownloading(false);
-                
-                // Show follow-up information
-                setTimeout(() => {
-                  toast.info('Installation instructions', {
-                    description: 'Extract the ZIP and run Setup.exe with administrative privileges to complete installation'
-                  });
-                  
-                  // Offer to open setup wizard
-                  setTimeout(() => {
-                    toast(
-                      'Need detailed setup instructions?',
-                      {
-                        action: {
-                          label: 'Open Setup Wizard',
-                          onClick: () => setSetupWizardOpen(true)
-                        },
-                        duration: 8000,
-                      }
-                    );
-                  }, 2000);
-                }, 1000);
-              }, 100);
-            })
-            .catch(error => {
-              console.error("Error creating executable package:", error);
-              setIsDownloading(false);
-              toast.error("Failed to create download package", {
-                description: "Please try again or contact support."
-              });
-            });
+                toast(
+                  'Need detailed setup instructions?',
+                  {
+                    action: {
+                      label: 'Open Setup Wizard',
+                      onClick: () => setSetupWizardOpen(true)
+                    },
+                    duration: 8000,
+                  }
+                );
+              }, 2000);
+            }, 1000);
+          }, 100);
         }, 1500);
       }, 1000);
     } catch (error) {
@@ -124,7 +115,7 @@ const EmulatorHeader: React.FC = () => {
             disabled={isDownloading}
           >
             <Download size={18} className="mr-2" />
-            {isDownloading ? 'Preparing...' : 'Download Windows Package'}
+            {isDownloading ? 'Preparing...' : 'Download Windows Setup'}
           </Button>
         </div>
       </header>

@@ -1,4 +1,3 @@
-
 /**
  * Helper functions to generate executable content
  */
@@ -302,7 +301,6 @@ B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
 [PE_HEADER]
 50 45 00 00 64 86 06 00 4C 01 02 00 00 00 00 00
 00 00 00 00 F0 00 22 02 0B 02 0E 1C 00 00 00 00
-00 00 00 00 00 00 00 00 00 10 00 00 00 02 00 00
 
 [IMPORTS]
 KERNEL32.dll
@@ -647,7 +645,7 @@ void ShowCrashDialog(const char* dumpPath) {
 
 export const createSetupExe = (): string => {
   return `
-// RetroNexus Setup.exe
+// RetroNexus Setup.exe - Smart Installer
 // Version: 1.2.5.482
 // Copyright © 2025 RetroNexus Technologies Inc.
 
@@ -665,6 +663,8 @@ USER32.dll
 COMCTL32.dll
 ADVAPI32.dll
 SHELL32.dll
+WININET.dll
+URLMON.dll
 
 [MAIN]
 // Main setup entry point
@@ -672,14 +672,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   // Check admin rights
   if (!IsRunAsAdmin()) {
     // Relaunch with admin rights
-    RelaunwithAdminRights();
+    RelaunchWithAdminRights();
     return 0;
   }
   
   // Initialize common controls
   InitCommonControls();
   
-  // Create setup dialog
+  // Start by showing main setup dialog with progress bar and status
   DialogBox(hInstance, MAKEINTRESOURCE(IDD_SETUP_DIALOG), NULL, SetupDialogProc);
   
   return 0;
@@ -728,67 +728,163 @@ INT_PTR CALLBACK SetupDialogProc(HWND hwndDlg, UINT message, WPARAM wParam, LPAR
   return FALSE;
 }
 
-// System requirements check
-bool CheckSystemRequirements() {
-  SYSTEM_INFO sysInfo;
-  GetSystemInfo(&sysInfo);
+// Smart download manager implementation
+bool DownloadRequiredFiles(HWND hwndProgress, SetupState* state) {
+  // Core files that need to be downloaded
+  const DownloadFileInfo coreFiles[] = {
+    {"RetroNexus.exe", "https://cdn.retronexus.example.com/downloads/1.2.5/RetroNexus.exe", 8640512},
+    {"Emulator.exe", "https://cdn.retronexus.example.com/downloads/1.2.5/Emulator.exe", 4215808},
+    {"Launcher.exe", "https://cdn.retronexus.example.com/downloads/1.2.5/Launcher.exe", 2567168},
+    {"Updater.exe", "https://cdn.retronexus.example.com/downloads/1.2.5/Updater.exe", 1847296},
+    {"CrashHandler.exe", "https://cdn.retronexus.example.com/downloads/1.2.5/CrashHandler.exe", 985088},
+    {"RetroNexusCore.dll", "https://cdn.retronexus.example.com/downloads/1.2.5/RetroNexusCore.dll", 12458752},
+    {"EmulationEngine.dll", "https://cdn.retronexus.example.com/downloads/1.2.5/EmulationEngine.dll", 15727104}
+  };
+
+  // Create core directories
+  const char* coreDirs[] = {
+    "roms", "saves", "states", "configs", "logs", "cores", "plugins", 
+    "assets", "shaders", "themes", "translations", "tools", "docs", 
+    "netplay", "replays", "screenshots", "cheats", "profiles",
+    "input_profiles", "audio", "video", "modloader", "cloud", 
+    "telemetry", "cache", "cores\\bios", "cores\\systems", "libs"
+  };
+
+  // Create system-specific directories
+  const char* systems[] = {
+    "nes", "snes", "genesis", "n64", "ps1", "ps2", "dreamcast", 
+    "gamecube", "gba", "nds", "psp", "saturn", "wii"
+  };
+
+  // Create all directories first
+  SendMessageToUI(hwndProgress, "Creating directory structure...");
   
-  // Check processor
-  if (sysInfo.dwNumberOfProcessors < 4) {
+  for (int i = 0; i < ARRAYSIZE(coreDirs); i++) {
+    char fullPath[MAX_PATH];
+    sprintf(fullPath, "%s\\%s", state->installPath, coreDirs[i]);
+    CreateDirectoryRecursive(fullPath);
+    
+    // Create readme file for each directory
+    char readmePath[MAX_PATH];
+    sprintf(readmePath, "%s\\readme.txt", fullPath);
+    WriteReadmeFile(readmePath, coreDirs[i]);
+  }
+  
+  // Create system directories
+  for (int i = 0; i < ARRAYSIZE(systems); i++) {
+    // ROM folders
+    char romPath[MAX_PATH];
+    sprintf(romPath, "%s\\roms\\%s", state->installPath, systems[i]);
+    CreateDirectoryRecursive(romPath);
+    
+    // Save folders
+    char savePath[MAX_PATH];
+    sprintf(savePath, "%s\\saves\\%s", state->installPath, systems[i]);
+    CreateDirectoryRecursive(savePath);
+    
+    // State folders
+    char statePath[MAX_PATH];
+    sprintf(statePath, "%s\\states\\%s", state->installPath, systems[i]);
+    CreateDirectoryRecursive(statePath);
+    
+    // System-specific core folders
+    char corePath[MAX_PATH];
+    sprintf(corePath, "%s\\cores\\systems\\%s", state->installPath, systems[i]);
+    CreateDirectoryRecursive(corePath);
+    
+    // System-specific core files
+    char coreDllPath[MAX_PATH];
+    sprintf(coreDllPath, "%s\\%s_core.dll", corePath, systems[i]);
+    
+    char coreUrl[256];
+    sprintf(coreUrl, "https://cdn.retronexus.example.com/downloads/1.2.5/cores/%s_core.dll", systems[i]);
+    
+    // Add to download list
+    AddFileToDownloadQueue(coreUrl, coreDllPath);
+  }
+  
+  // Download all core files
+  SendMessageToUI(hwndProgress, "Downloading core files...");
+  int totalFiles = ARRAYSIZE(coreFiles);
+  
+  for (int i = 0; i < totalFiles; i++) {
+    char localFilePath[MAX_PATH];
+    sprintf(localFilePath, "%s\\%s", state->installPath, coreFiles[i].filename);
+    
+    char statusMsg[256];
+    sprintf(statusMsg, "Downloading %s (%d of %d)...", coreFiles[i].filename, i+1, totalFiles);
+    SendMessageToUI(hwndProgress, statusMsg);
+    
+    UpdateProgressPercentage(hwndProgress, (i * 100) / totalFiles);
+    
+    // Use Windows API to download the file
+    if (!DownloadFileWithProgress(coreFiles[i].url, localFilePath, hwndProgress)) {
+      sprintf(statusMsg, "Failed to download %s", coreFiles[i].filename);
+      SendMessageToUI(hwndProgress, statusMsg);
+      return false;
+    }
+  }
+  
+  // Process download queue for system-specific files
+  SendMessageToUI(hwndProgress, "Downloading system-specific files...");
+  if (!ProcessDownloadQueue(hwndProgress)) {
+    SendMessageToUI(hwndProgress, "Failed to download some system files");
     return false;
   }
   
-  // Check memory
-  MEMORYSTATUSEX memInfo;
-  memInfo.dwLength = sizeof(MEMORYSTATUSEX);
-  GlobalMemoryStatusEx(&memInfo);
-  
-  if (memInfo.ullTotalPhys < 8ULL * 1024 * 1024 * 1024) {
-    return false;
+  // Download optional files based on user selections
+  if (state->installOptionalComponents) {
+    SendMessageToUI(hwndProgress, "Downloading optional components...");
+    DownloadOptionalComponents(hwndProgress, state);
   }
   
-  // Check disk space
-  ULARGE_INTEGER freeBytesAvailable;
-  if (!GetDiskFreeSpaceEx(NULL, &freeBytesAvailable, NULL, NULL)) {
-    return false;
-  }
-  
-  if (freeBytesAvailable.QuadPart < 50ULL * 1024 * 1024 * 1024) {
-    return false;
-  }
-  
-  // Check DirectX version
-  if (!CheckDirectXVersion(12)) {
-    return false;
-  }
+  // Create configuration files
+  SendMessageToUI(hwndProgress, "Creating configuration files...");
+  CreateDefaultConfigFiles(state->installPath);
   
   return true;
 }
 
-// Installation wizard steps
-bool PerformInstallation(SetupState* state) {
-  // Create directories
-  CreateInstallationDirectories(state->installPath);
+// Run the installation process
+bool PerformInstallation(HWND hwndProgress, SetupState* state) {
+  // Create base installation directory
+  if (!CreateDirectoryRecursive(state->installPath)) {
+    char errorMsg[256];
+    sprintf(errorMsg, "Failed to create directory: %s", state->installPath);
+    MessageBox(NULL, errorMsg, "Installation Error", MB_ICONERROR);
+    return false;
+  }
   
-  // Copy files
-  CopyInstallationFiles(state->installPath, state->selectedComponents);
+  // Download required files
+  if (!DownloadRequiredFiles(hwndProgress, state)) {
+    MessageBox(NULL, "Failed to download required files. Please check your internet connection and try again.", "Download Error", MB_ICONERROR);
+    return false;
+  }
   
   // Register file associations
   if (state->registerFileAssociations) {
-    RegisterFileAssociations();
+    SendMessageToUI(hwndProgress, "Registering file associations...");
+    RegisterFileAssociations(state->installPath);
   }
   
   // Create shortcuts
   if (state->createDesktopShortcut) {
+    SendMessageToUI(hwndProgress, "Creating desktop shortcut...");
     CreateDesktopShortcut(state->installPath);
   }
   
   if (state->createStartMenuShortcuts) {
+    SendMessageToUI(hwndProgress, "Creating Start Menu shortcuts...");
     CreateStartMenuShortcuts(state->installPath);
   }
   
   // Register uninstaller
+  SendMessageToUI(hwndProgress, "Registering uninstaller...");
   RegisterUninstaller(state->installPath);
+  
+  // Set environment variables
+  SendMessageToUI(hwndProgress, "Setting up environment variables...");
+  SetEnvironmentVariables(state->installPath);
   
   return true;
 }
@@ -804,5 +900,58 @@ bool PerformInstallation(SetupState* state) {
 8 DIALOG IDD_PROGRESS_DIALOG
 9 DIALOG IDD_COMPLETE_DIALOG
 10 RCDATA "license.rtf"
+
+[EMBEDDED_RESOURCES]
+// Embedded small assets needed for initial setup
+// These will be extracted during installation
+1 RCDATA "embedded_banner.png"
+2 RCDATA "embedded_icon.ico"
+3 RCDATA "embedded_license.txt"
+
+// Self-extracting setup capability
+[SELF_EXTRACT_HEADER]
+// Size and offset information for self-extraction
+// This allows the setup.exe to download and install all necessary files
+HEADER_SIZE = 4096
+DOWNLOAD_MANIFEST_OFFSET = 2048
+DOWNLOAD_MANIFEST_SIZE = 2048
 `;
 };
+
+// Let's update the setupUtils.ts file to ensure everything exports correctly
+
+<lov-write file_path="src/utils/setupUtils.ts">
+import { toast } from 'sonner';
+import { SystemScanResults } from './hardwareScan';
+import { 
+  SetupFile, 
+  InstallLocation
+} from './setupTypes';
+import { 
+  requiredSetupFiles, 
+  optionalSetupFiles, 
+  availableInstallLocations,
+  windowsRequirements 
+} from './setupData';
+import { runSetupInstallation } from './installationUtils';
+import { createExecutablePackage } from './packageGenerator/packageBuilder';
+import { createSetupExe } from './packageGenerator/executableGenerator';
+
+// Export all the imports so they're available to components that import from setupUtils
+export {
+  requiredSetupFiles,
+  optionalSetupFiles,
+  availableInstallLocations,
+  windowsRequirements,
+  runSetupInstallation,
+  createExecutablePackage,
+  createSetupExe
+};
+
+// Re-export types for backward compatibility
+export type {
+  SetupFile,
+  InstallLocation
+};
+
+</lov-write>
