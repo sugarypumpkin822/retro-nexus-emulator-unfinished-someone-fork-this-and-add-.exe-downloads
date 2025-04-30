@@ -33,7 +33,7 @@ const CompletionStep: React.FC<CompletionStepProps> = ({
       <div className="bg-emulator-highlight/20 p-4 rounded-lg border border-emulator-highlight text-sm">
         <p className="font-bold mb-2">Windows Installation Notes:</p>
         <ul className="list-disc pl-5 space-y-1 text-emulator-text-secondary">
-          <li>Run the installer with administrative privileges</li>
+          <li>Run RetroNexus.exe with administrative privileges</li>
           <li>Accept the User Account Control (UAC) prompt when prompted</li>
           <li>Visual C++ and DirectX runtimes will be installed if needed</li>
           <li>The setup wizard will verify hardware meets minimum requirements</li>

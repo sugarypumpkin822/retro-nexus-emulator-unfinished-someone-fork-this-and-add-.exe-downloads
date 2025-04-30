@@ -58,35 +58,78 @@ B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
 
 [MAIN_CODE_SECTION]
 // Main entry point and initialization code here
-// This is the primary executable that loads all required DLLs
+// This is the primary emulation engine that loads all required DLLs
 // and initializes the RetroNexus emulation environment
 
-int main(int argc, char** argv) {
-  // Initialize the application
-  if (!InitializeApplication()) {
-    ShowErrorMessage("Failed to initialize application");
-    return -1;
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+  // Initialize RetroNexus subsystems
+  if (!InitializeEmulationSystems()) {
+    ShowErrorDialog("Failed to initialize emulation systems");
+    return 1;
   }
   
-  // Verify all required DLLs are present
+  // Parse command line arguments
+  ParseCommandLine(lpCmdLine);
+  
+  // Load configuration
+  if (!LoadConfiguration()) {
+    ShowErrorDialog("Failed to load configuration");
+    return 1;
+  }
+  
+  // Create main window
+  if (!CreateMainWindow(hInstance, nCmdShow)) {
+    ShowErrorDialog("Failed to create main window");
+    return 1;
+  }
+  
+  // Enter message loop
+  MSG msg;
+  while (GetMessage(&msg, NULL, 0, 0)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+  
+  // Cleanup and exit
+  ShutdownEmulationSystems();
+  return msg.wParam;
+}
+
+// Emulation system initialization
+bool InitializeEmulationSystems() {
+  // First verify all required DLLs are present
   if (!VerifyRequiredDLLs()) {
     ShowErrorMessage("Missing required DLL files. Please reinstall the application.");
-    return -2;
+    return false;
   }
   
   // Load the emulation core
   if (!LoadEmulationCore()) {
     ShowErrorMessage("Failed to load emulation core");
-    return -3;
+    return false;
   }
   
-  // Start the main application loop
-  RunMainApplicationLoop();
+  // Initialize graphics subsystem
+  if (!InitializeGraphics()) {
+    return false;
+  }
   
-  // Cleanup resources
-  CleanupResources();
+  // Initialize audio subsystem
+  if (!InitializeAudio()) {
+    return false;
+  }
   
-  return 0;
+  // Initialize input subsystem
+  if (!InitializeInput()) {
+    return false;
+  }
+  
+  // Initialize save system
+  if (!InitializeSaveSystem()) {
+    return false;
+  }
+  
+  return true;
 }
 
 // Check if all required DLLs are present and loadable
@@ -128,11 +171,11 @@ bool VerifyRequiredDLLs() {
 `
 };
 
-// Additional executables
+// Emulator executable is now a secondary component
 export const emulatorExeCode: ExecutableCode = {
   name: "Emulator.exe",
   version: "1.2.5.482",
-  description: "RetroNexus emulator runtime",
+  description: "RetroNexus secondary emulator runtime",
   size: 1048576, // 1MB
   code: `
 // RetroNexus Emulator.exe
@@ -158,75 +201,41 @@ InputManager.dll
 AudioEngine.dll
 
 [MAIN]
-// Main emulation core entry point
+// Secondary emulation runner that delegates to RetroNexus.exe
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-  // First verify all required DLLs are present
-  if (!VerifyRequiredDependencies()) {
-    ShowErrorDialog("One or more required DLL files are missing. Please reinstall RetroNexus.");
+  // Check if RetroNexus.exe exists
+  DWORD fileAttr = GetFileAttributesA("RetroNexus.exe");
+  if (fileAttr == INVALID_FILE_ATTRIBUTES) {
+    MessageBoxA(NULL, "RetroNexus.exe not found. Please reinstall the application.", "Error", MB_ICONERROR);
     return 1;
   }
   
-  // Initialize RetroNexus subsystems
-  if (!InitializeEmulationSystems()) {
-    ShowErrorDialog("Failed to initialize emulation systems");
+  // Launch RetroNexus.exe with the same command line
+  char commandLine[1024] = "RetroNexus.exe ";
+  if (lpCmdLine && lpCmdLine[0] != '\\0') {
+    strcat(commandLine, lpCmdLine);
+  }
+  
+  STARTUPINFO si = { sizeof(STARTUPINFO) };
+  PROCESS_INFORMATION pi;
+  
+  if (!CreateProcessA(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    MessageBoxA(NULL, "Failed to launch RetroNexus.exe", "Error", MB_ICONERROR);
     return 1;
   }
   
-  // Parse command line arguments
-  ParseCommandLine(lpCmdLine);
+  // Wait for process to exit
+  WaitForSingleObject(pi.hProcess, INFINITE);
   
-  // Load configuration
-  if (!LoadConfiguration()) {
-    ShowErrorDialog("Failed to load configuration");
-    return 1;
-  }
+  // Get exit code
+  DWORD exitCode = 0;
+  GetExitCodeProcess(pi.hProcess, &exitCode);
   
-  // Create main window
-  if (!CreateMainWindow(hInstance, nCmdShow)) {
-    ShowErrorDialog("Failed to create main window");
-    return 1;
-  }
+  // Clean up
+  CloseHandle(pi.hProcess);
+  CloseHandle(pi.hThread);
   
-  // Enter message loop
-  MSG msg;
-  while (GetMessage(&msg, NULL, 0, 0)) {
-    TranslateMessage(&msg);
-    DispatchMessage(&msg);
-  }
-  
-  // Cleanup and exit
-  ShutdownEmulationSystems();
-  return msg.wParam;
-}
-
-// Check that all required DLLs are present
-bool VerifyRequiredDependencies() {
-  const char* requiredDlls[] = {
-    "RetroNexusCore.dll",
-    "EmulationEngine.dll",
-    "HardwareAcceleration.dll",
-    "InputManager.dll",
-    "AudioEngine.dll",
-    "DirectX12Runtime.dll",
-    "VulkanSupport.dll",
-    "OpenGLWrapper.dll",
-    "PhysicsEngine.dll",
-    "ShaderCompiler.dll",
-    "TextureProcessor.dll",
-    "SaveStateManager.dll",
-    "RenderingUtils.dll",
-    "NetworkLayer.dll"
-  };
-  
-  for (int i = 0; i < sizeof(requiredDlls) / sizeof(requiredDlls[0]); i++) {
-    void* handle = LoadLibrary(requiredDlls[i]);
-    if (!handle) {
-      return false;
-    }
-    FreeLibrary(handle);
-  }
-  
-  return true;
+  return exitCode;
 }
 
 [RESOURCES]
