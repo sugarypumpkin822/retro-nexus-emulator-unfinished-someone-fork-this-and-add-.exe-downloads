@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { setupRequiredFiles, systemRequirements } from '@/data/gameData';
+import { requiredSetupFiles, optionalSetupFiles } from '@/utils/setupData';
 import { Button } from '@/components/ui/button';
-import { Check, X, Download, AlertTriangle, Loader2, FileDown, Shield, Cpu } from 'lucide-react';
+import { Check, X, Download, AlertTriangle, Loader2, FileDown, Shield, Cpu, Code, FileCode } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
@@ -11,10 +11,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { windowsRequirements } from '@/utils/setupData';
-import { createExecutablePackage } from '@/utils/packageGenerator/packageBuilder';
+import { createExecutablePackage, verifyRequiredDlls } from '@/utils/packageGenerator/packageBuilder';
+import { allExecutableCodes } from '@/utils/executableCodeDefinitions';
+import { getAllDlls, getRequiredDlls } from '@/utils/dllCodeDefinitions';
+import FileListPagination from './FileListPagination';
+import { SetupFile } from '@/utils/setupTypes';
 
 interface EmulatorSetupWizardProps {
   open: boolean;
@@ -32,10 +43,40 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
   const [progress, setProgress] = useState(0);
   const [missingFiles, setMissingFiles] = useState<string[]>([]);
   const [saveLocation, setSaveLocation] = useState<string>("");
+  const [currentTabView, setCurrentTabView] = useState("required");
+  const [currentFileIndex, setCurrentFileIndex] = useState<number | undefined>(undefined);
+  const [installedDlls, setInstalledDlls] = useState<string[]>([]);
   
-  const totalSteps = 3;
-
-  // Simulate system check
+  // Convert DLL definitions to setup files format
+  const requiredDlls: SetupFile[] = getRequiredDlls().map(dll => ({
+    name: dll.name,
+    size: `${Math.round(dll.size / 1024)}KB`,
+    status: 'pending',
+    progress: 0,
+    required: true
+  }));
+  
+  const optionalDlls: SetupFile[] = getAllDlls()
+    .filter(dll => !dll.isRequired)
+    .map(dll => ({
+      name: dll.name,
+      size: `${Math.round(dll.size / 1024)}KB`,
+      status: 'pending',
+      progress: 0,
+      required: false
+    }));
+  
+  // Convert executables to setup files
+  const executableFiles: SetupFile[] = Object.values(allExecutableCodes).map(exe => ({
+    name: exe.name,
+    size: `${Math.round(exe.size / 1024)}KB`,
+    status: 'pending',
+    progress: 0,
+    required: true
+  }));
+  
+  const totalSteps = 4; // Now 4 steps with the DLL management page added
+  
   useEffect(() => {
     if (open && step === 1) {
       setIsChecking(true);
@@ -48,7 +89,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
             setIsChecking(false);
             
             // Randomly determine missing files (for demonstration)
-            const missing = setupRequiredFiles.filter(() => Math.random() > 0.6);
+            const missing = requiredSetupFiles.filter(() => Math.random() > 0.6);
             setMissingFiles(missing);
             
             return 100;
@@ -60,8 +101,22 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
       return () => clearInterval(interval);
     }
   }, [open, step]);
+  
+  // Check if all required DLLs are installed
+  const checkRequiredDllsInstalled = (): boolean => {
+    const dllVerification = verifyRequiredDlls(installedDlls);
+    return dllVerification.isValid;
+  };
 
   const handleNext = () => {
+    // When moving from DLL management to Windows installer page, check required DLLs
+    if (step === 2 && !checkRequiredDllsInstalled()) {
+      toast.error("Missing required DLLs", {
+        description: "All required DLL files must be installed before proceeding"
+      });
+      return;
+    }
+    
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
@@ -81,6 +136,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
     });
     onOpenChange(false);
     setStep(1);
+    setInstalledDlls([]);
   };
 
   const handleInstallMissing = async () => {
@@ -99,6 +155,57 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
         return prev + 5;
       });
     }, 150);
+  };
+  
+  // Handle DLL installation
+  const handleInstallDll = (file: SetupFile, index: number) => {
+    if (isInstalling) return;
+    
+    setCurrentFileIndex(index);
+    setIsInstalling(true);
+    
+    // Update the file status
+    const updatedFile = {...file, status: 'downloading', progress: 0};
+    
+    // For DLLs, update in either required or optional arrays
+    if (currentTabView === "required") {
+      requiredDlls[requiredDlls.findIndex(f => f.name === file.name)] = updatedFile;
+    } else if (currentTabView === "optional") {
+      optionalDlls[optionalDlls.findIndex(f => f.name === file.name)] = updatedFile;
+    } else if (currentTabView === "executables") {
+      executableFiles[executableFiles.findIndex(f => f.name === file.name)] = updatedFile;
+    }
+    
+    // Simulate download progress
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 10;
+      
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        
+        // Mark as completed
+        if (currentTabView === "required") {
+          requiredDlls[requiredDlls.findIndex(f => f.name === file.name)].status = 'completed';
+          requiredDlls[requiredDlls.findIndex(f => f.name === file.name)].progress = 100;
+        } else if (currentTabView === "optional") {
+          optionalDlls[optionalDlls.findIndex(f => f.name === file.name)].status = 'completed';
+          optionalDlls[optionalDlls.findIndex(f => f.name === file.name)].progress = 100;
+        } else if (currentTabView === "executables") {
+          executableFiles[executableFiles.findIndex(f => f.name === file.name)].status = 'completed';
+          executableFiles[executableFiles.findIndex(f => f.name === file.name)].progress = 100;
+        }
+        
+        // Add to installed DLLs list
+        setInstalledDlls(prev => [...prev, file.name]);
+        
+        setIsInstalling(false);
+        setCurrentFileIndex(undefined);
+        
+        toast.success(`${file.name} installed successfully!`);
+      }
+    }, 100);
   };
 
   // Handle Windows executable generation
@@ -223,7 +330,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
                         </div>
                         
                         <ul className="space-y-2">
-                          {setupRequiredFiles.map((file, index) => (
+                          {requiredSetupFiles.map((file, index) => (
                             <li key={index} className="flex items-center">
                               <Check className="mr-2 text-emulator-success" size={16} />
                               <span>{file}</span>
@@ -240,6 +347,106 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
         );
       
       case 2:
+        // The new DLL Management step
+        return (
+          <div className="space-y-4">
+            <p className="text-emulator-text-secondary">
+              Install and manage the required DLL files for the RetroNexus Emulator. <strong>All required DLLs must be installed</strong> for the emulator to function properly.
+            </p>
+            
+            <Tabs defaultValue="required" onValueChange={setCurrentTabView}>
+              <TabsList className="w-full grid grid-cols-3">
+                <TabsTrigger value="required">
+                  Required DLLs
+                  <span className="ml-2 px-2 py-0.5 text-xs bg-emulator-error/20 text-emulator-error rounded-full">
+                    {requiredDlls.filter(dll => dll.status === 'completed').length}/{requiredDlls.length}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="optional">Optional DLLs</TabsTrigger>
+                <TabsTrigger value="executables">Executables</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="required" className="mt-4 space-y-4">
+                <div className="bg-emulator-highlight/10 p-3 rounded-md text-sm text-emulator-text-secondary border border-emulator-highlight mb-4">
+                  <div className="flex items-center mb-1">
+                    <AlertTriangle className="mr-2 text-emulator-warning" size={16} />
+                    <span className="text-emulator-warning font-medium">All these DLLs are required</span>
+                  </div>
+                  <p>The RetroNexus Emulator requires all of these DLLs to function properly. Make sure to install them all.</p>
+                </div>
+                
+                <FileListPagination 
+                  files={requiredDlls} 
+                  onFileAction={handleInstallDll}
+                  isProcessingFile={isInstalling}
+                  currentFileIndex={currentFileIndex}
+                />
+              </TabsContent>
+              
+              <TabsContent value="optional" className="mt-4">
+                <div className="bg-emulator-highlight/10 p-3 rounded-md text-sm text-emulator-text-secondary border border-emulator-highlight mb-4">
+                  <div className="flex items-center mb-1">
+                    <FileCode className="mr-2 text-emulator-accent" size={16} />
+                    <span className="text-emulator-accent font-medium">Optional enhancements</span>
+                  </div>
+                  <p>These DLLs add additional features like enhanced graphics or controller support but are not required.</p>
+                </div>
+                
+                <FileListPagination 
+                  files={optionalDlls} 
+                  onFileAction={handleInstallDll}
+                  isProcessingFile={isInstalling}
+                  currentFileIndex={currentFileIndex}
+                />
+              </TabsContent>
+              
+              <TabsContent value="executables" className="mt-4">
+                <div className="bg-emulator-highlight/10 p-3 rounded-md text-sm text-emulator-text-secondary border border-emulator-highlight mb-4">
+                  <div className="flex items-center mb-1">
+                    <Code className="mr-2 text-emulator-accent" size={16} />
+                    <span className="text-emulator-accent font-medium">Executable Files</span>
+                  </div>
+                  <p>These are the main executable files required for RetroNexus Emulator.</p>
+                </div>
+                
+                <FileListPagination 
+                  files={executableFiles} 
+                  onFileAction={handleInstallDll}
+                  isProcessingFile={isInstalling}
+                  currentFileIndex={currentFileIndex}
+                />
+              </TabsContent>
+            </Tabs>
+            
+            <div className="mt-4 pt-4 border-t border-emulator-highlight">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">DLL Installation Status</p>
+                  <p className="text-xs text-emulator-text-secondary">
+                    {installedDlls.length} of {getRequiredDlls().length} required DLLs installed
+                  </p>
+                </div>
+                
+                <div>
+                  {checkRequiredDllsInstalled() ? (
+                    <div className="flex items-center text-emulator-success">
+                      <Check size={16} className="mr-1" />
+                      <span className="text-sm">All required DLLs installed</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-emulator-error">
+                      <AlertTriangle size={16} className="mr-1" />
+                      <span className="text-sm">Missing required DLLs</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 3:
+        // System requirements - now step 3 instead of 2
         return (
           <div className="space-y-4">
             <p className="text-emulator-text-secondary">
@@ -367,7 +574,8 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
           </div>
         );
       
-      case 3:
+      case 4:
+        // Completion - now step 4 instead of 3
         return (
           <div className="space-y-4">
             <p className="text-emulator-text-secondary">
@@ -423,7 +631,12 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
             RetroNexus Windows Setup Wizard
           </DialogTitle>
           <DialogDescription>
-            Step {step} of {totalSteps}: {step === 1 ? 'System Check' : step === 2 ? 'Windows Requirements' : 'Complete'}
+            Step {step} of {totalSteps}: {
+              step === 1 ? 'System Check' : 
+              step === 2 ? 'DLL Management' : 
+              step === 3 ? 'Windows Requirements' : 
+              'Complete'
+            }
           </DialogDescription>
         </DialogHeader>
         
@@ -446,7 +659,8 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
           <Button 
             onClick={step === totalSteps ? handleComplete : handleNext}
             disabled={(step === 1 && (isChecking || (missingFiles.length > 0 && !isInstalling))) || 
-                     (step === 2 && isGeneratingExe && !saveLocation) ||
+                     (step === 2 && !checkRequiredDllsInstalled()) ||
+                     (step === 3 && isGeneratingExe && !saveLocation) ||
                      isInstalling}
             className={
               step === totalSteps 

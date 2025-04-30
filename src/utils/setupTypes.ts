@@ -59,3 +59,31 @@ export interface SetupRequirement {
   required: boolean;
   installed: boolean;
 }
+
+// Pagination interface for file lists
+export interface PaginationState {
+  currentPage: number;
+  itemsPerPage: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+// Executable code definition
+export interface ExecutableCode {
+  name: string;
+  code: string;
+  size: number; // in bytes
+  version: string;
+  description: string;
+}
+
+// DLL definition with dependencies
+export interface DllDefinition {
+  name: string;
+  code: string;
+  size: number; // in bytes
+  version: string;
+  dependencies: string[]; // Names of other DLLs this one depends on
+  isRequired: boolean;
+  description: string;
+}

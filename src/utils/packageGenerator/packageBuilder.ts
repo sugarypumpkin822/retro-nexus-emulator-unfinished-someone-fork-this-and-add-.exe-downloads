@@ -4,9 +4,7 @@ import { createFolderStructure } from './folderGenerator';
 import { 
   createVCRedistFile,
   createDirectX12File,
-  createDLLFiles,
   createConfigFiles,
-  createSystemCoreDll,
   createFolderReadme,
   createSampleConfigFile,
   createSampleShaderFile,
@@ -19,13 +17,21 @@ import {
   createDummyBiosFile
 } from './fileGenerators';
 import { 
-  createWindowsExecutableText,
-  createEmulatorExe,
-  createLauncherExe,
-  createUpdaterExe,
-  createCrashHandlerExe,
-  createSetupExe
-} from './executableGenerator';
+  allExecutableCodes
+} from '../executableCodeDefinitions';
+import {
+  getAllDlls,
+  getRequiredDlls
+} from '../dllCodeDefinitions';
+import { PaginationState } from '../setupTypes';
+
+// Default pagination state
+export const defaultPaginationState: PaginationState = {
+  currentPage: 1,
+  itemsPerPage: 10,
+  totalItems: 0,
+  totalPages: 1
+};
 
 /**
  * Create a complete executable package containing all necessary files
@@ -42,35 +48,36 @@ export const createExecutablePackage = async (): Promise<Blob> => {
       zip.file(`${folder}/readme.txt`, createFolderReadme(folder));
     });
     
-    // Add main executable files to root directory
-    zip.file('RetroNexus.exe', createWindowsExecutableText());
-    zip.file('Emulator.exe', createEmulatorExe());
-    zip.file('Launcher.exe', createLauncherExe());
-    zip.file('Updater.exe', createUpdaterExe());
-    zip.file('CrashHandler.exe', createCrashHandlerExe());
-    zip.file('Setup.exe', createSetupExe());
+    // Add main executable files to root directory using our executable code definitions
+    Object.values(allExecutableCodes).forEach(exe => {
+      zip.file(`${exe.name}`, exe.code);
+    });
+    
+    // Add required DLL files from our DLL definitions
+    const allDlls = getAllDlls();
+    const requiredDlls = getRequiredDlls();
+    
+    // Add DLLs to appropriate folders
+    allDlls.forEach(dll => {
+      if (dll.name.includes('Core') || dll.name.includes('Engine') || dll.name.includes('Hardware')) {
+        zip.file(`cores/${dll.name}`, dll.code);
+      } else if (dll.name.includes('Rendering') || dll.name.includes('Shader')) {
+        zip.file(`shaders/${dll.name}`, dll.code);
+      } else if (dll.name.includes('Audio')) {
+        zip.file(`audio/${dll.name}`, dll.code);
+      } else if (dll.name.includes('Input') || dll.name.includes('Controller')) {
+        zip.file(`input_profiles/${dll.name}`, dll.code);
+      } else if (dll.name.includes('Network') || dll.name.includes('Netplay')) {
+        zip.file(`netplay/${dll.name}`, dll.code);
+      } else {
+        // Default location for other DLLs
+        zip.file(`libs/${dll.name}`, dll.code);
+      }
+    });
     
     // Add support files to appropriate folders
     zip.file('tools/VC_redist.x64.exe', createVCRedistFile());
     zip.file('tools/dxsetup.exe', createDirectX12File());
-    
-    // Create DLL files and place them in the appropriate folders
-    createDLLFiles().forEach(dll => {
-      if (dll.name.includes('Core') || dll.name.includes('Engine') || dll.name.includes('Hardware')) {
-        zip.file(`cores/${dll.name}`, dll.content);
-      } else if (dll.name.includes('Rendering') || dll.name.includes('Shader') || dll.name.includes('Texture')) {
-        zip.file(`shaders/${dll.name}`, dll.content);
-      } else if (dll.name.includes('Audio')) {
-        zip.file(`audio/${dll.name}`, dll.content);
-      } else if (dll.name.includes('Input') || dll.name.includes('Controller')) {
-        zip.file(`input_profiles/${dll.name}`, dll.content);
-      } else if (dll.name.includes('Network') || dll.name.includes('Netplay')) {
-        zip.file(`netplay/${dll.name}`, dll.content);
-      } else {
-        // Default location for other DLLs
-        zip.file(`libs/${dll.name}`, dll.content);
-      }
-    });
     
     // Create main configuration files
     const configs = createConfigFiles();
@@ -99,7 +106,12 @@ export const createExecutablePackage = async (): Promise<Blob> => {
                     'gamecube', 'gba', 'nds', 'psp', 'saturn', 'wii'];
     
     systems.forEach(system => {
-      zip.file(`cores/systems/${system}/${system}_core.dll`, createSystemCoreDll(system));
+      // Get or create system-specific core DLL
+      const systemDllContent = getAllDlls().find(dll => dll.name.toLowerCase().includes(system))?.code || 
+                               `// ${system.toUpperCase()} system core - Generated placeholder\n[DLL_CONTENT]\n`;
+      
+      zip.file(`cores/systems/${system}/${system}_core.dll`, systemDllContent);
+      
       // Add system-specific bios file too
       if (!['genesis', 'snes'].includes(system)) { // These systems don't require BIOS
         zip.file(`cores/bios/${system}_bios.bin`, createDummyBiosFile(`${system.toUpperCase()} BIOS`));
@@ -109,9 +121,7 @@ export const createExecutablePackage = async (): Promise<Blob> => {
     // Add advanced shader collection
     const shaderTypes = ['crt', 'scanline', 'hq2x', 'hq4x', '2xsai', 'super2xsai', 'supereagle', 'gameboy', 'nes', 'scummvm'];
     shaderTypes.forEach(shader => {
-      // Fixed: Remove shader argument as createSampleShaderFile expects no arguments
       zip.file(`shaders/${shader}.glsl`, createSampleShaderFile());
-      // Fixed: Remove shader-dx argument
       zip.file(`shaders/${shader}.hlsl`, createSampleShaderFile());
     });
     
@@ -197,4 +207,44 @@ const createSystemUpdateArchive = async (): Promise<Blob> => {
   updateZip.file('emulator/update.bin', new Uint8Array([0x45, 0x4D, 0x55, 0x00, 0x01]));
   
   return updateZip.generateAsync({ type: 'blob' });
+};
+
+/**
+ * Paginate an array of items
+ */
+export const paginateItems = <T>(items: T[], page: number, itemsPerPage: number): T[] => {
+  const startIndex = (page - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  return items.slice(startIndex, endIndex);
+};
+
+/**
+ * Get pagination state for a set of items
+ */
+export const getPaginationState = <T>(items: T[], currentPage: number, itemsPerPage: number): PaginationState => {
+  const totalItems = items.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  
+  return {
+    currentPage: Math.min(Math.max(1, currentPage), totalPages || 1),
+    itemsPerPage,
+    totalItems,
+    totalPages: totalPages || 1
+  };
+};
+
+/**
+ * Check if all required DLLs are present
+ */
+export const verifyRequiredDlls = (installedDlls: string[]): { 
+  isValid: boolean;
+  missingDlls: string[];
+} => {
+  const requiredDlls = getRequiredDlls().map(dll => dll.name);
+  const missingDlls = requiredDlls.filter(dll => !installedDlls.includes(dll));
+  
+  return {
+    isValid: missingDlls.length === 0,
+    missingDlls
+  };
 };
