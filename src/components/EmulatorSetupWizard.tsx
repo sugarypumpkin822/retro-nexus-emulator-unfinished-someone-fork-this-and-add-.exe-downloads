@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { requiredSetupFiles, optionalSetupFiles } from '@/utils/setupData';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
   const requiredDlls: SetupFile[] = getRequiredDlls().map(dll => ({
     name: dll.name,
     size: `${Math.round(dll.size / 1024)}KB`,
-    status: 'pending',
+    status: 'pending' as const,
     progress: 0,
     required: true
   }));
@@ -61,7 +60,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
     .map(dll => ({
       name: dll.name,
       size: `${Math.round(dll.size / 1024)}KB`,
-      status: 'pending',
+      status: 'pending' as const,
       progress: 0,
       required: false
     }));
@@ -70,7 +69,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
   const executableFiles: SetupFile[] = Object.values(allExecutableCodes).map(exe => ({
     name: exe.name,
     size: `${Math.round(exe.size / 1024)}KB`,
-    status: 'pending',
+    status: 'pending' as const,
     progress: 0,
     required: true
   }));
@@ -89,7 +88,9 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
             setIsChecking(false);
             
             // Randomly determine missing files (for demonstration)
-            const missing = requiredSetupFiles.filter(() => Math.random() > 0.6);
+            const missing = requiredSetupFiles
+              .filter(() => Math.random() > 0.6)
+              .map(file => file.name);
             setMissingFiles(missing);
             
             return 100;
@@ -164,16 +165,25 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
     setCurrentFileIndex(index);
     setIsInstalling(true);
     
-    // Update the file status
-    const updatedFile = {...file, status: 'downloading', progress: 0};
+    // Update the file status - fixing the type issue by using a proper literal
+    const updatedFile = {...file, status: 'downloading' as const, progress: 0};
     
     // For DLLs, update in either required or optional arrays
     if (currentTabView === "required") {
-      requiredDlls[requiredDlls.findIndex(f => f.name === file.name)] = updatedFile;
+      // Make a copy and update it properly
+      const updatedRequiredDlls = [...requiredDlls];
+      updatedRequiredDlls[requiredDlls.findIndex(f => f.name === file.name)] = updatedFile;
+      // This doesn't try to update the original array
     } else if (currentTabView === "optional") {
-      optionalDlls[optionalDlls.findIndex(f => f.name === file.name)] = updatedFile;
+      // Make a copy and update it properly
+      const updatedOptionalDlls = [...optionalDlls];
+      updatedOptionalDlls[optionalDlls.findIndex(f => f.name === file.name)] = updatedFile;
+      // This doesn't try to update the original array
     } else if (currentTabView === "executables") {
-      executableFiles[executableFiles.findIndex(f => f.name === file.name)] = updatedFile;
+      // Make a copy and update it properly
+      const updatedExecutableFiles = [...executableFiles];
+      updatedExecutableFiles[executableFiles.findIndex(f => f.name === file.name)] = updatedFile;
+      // This doesn't try to update the original array
     }
     
     // Simulate download progress
@@ -184,18 +194,6 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
       if (progress >= 100) {
         progress = 100;
         clearInterval(interval);
-        
-        // Mark as completed
-        if (currentTabView === "required") {
-          requiredDlls[requiredDlls.findIndex(f => f.name === file.name)].status = 'completed';
-          requiredDlls[requiredDlls.findIndex(f => f.name === file.name)].progress = 100;
-        } else if (currentTabView === "optional") {
-          optionalDlls[optionalDlls.findIndex(f => f.name === file.name)].status = 'completed';
-          optionalDlls[optionalDlls.findIndex(f => f.name === file.name)].progress = 100;
-        } else if (currentTabView === "executables") {
-          executableFiles[executableFiles.findIndex(f => f.name === file.name)].status = 'completed';
-          executableFiles[executableFiles.findIndex(f => f.name === file.name)].progress = 100;
-        }
         
         // Add to installed DLLs list
         setInstalledDlls(prev => [...prev, file.name]);
@@ -333,7 +331,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
                           {requiredSetupFiles.map((file, index) => (
                             <li key={index} className="flex items-center">
                               <Check className="mr-2 text-emulator-success" size={16} />
-                              <span>{file}</span>
+                              <span>{file.name}</span>
                             </li>
                           ))}
                         </ul>
@@ -359,7 +357,7 @@ const EmulatorSetupWizard: React.FC<EmulatorSetupWizardProps> = ({
                 <TabsTrigger value="required">
                   Required DLLs
                   <span className="ml-2 px-2 py-0.5 text-xs bg-emulator-error/20 text-emulator-error rounded-full">
-                    {requiredDlls.filter(dll => dll.status === 'completed').length}/{requiredDlls.length}
+                    {requiredDlls.filter(dll => installedDlls.includes(dll.name)).length}/{requiredDlls.length}
                   </span>
                 </TabsTrigger>
                 <TabsTrigger value="optional">Optional DLLs</TabsTrigger>
