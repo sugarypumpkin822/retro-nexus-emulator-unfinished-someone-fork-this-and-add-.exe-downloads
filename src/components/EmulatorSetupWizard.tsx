@@ -3,7 +3,7 @@ import React from 'react';
 import { requiredSetupFiles, optionalSetupFiles } from '@/utils/setupData';
 import { windowsRequirements } from '@/utils/setupData';
 import { getRequiredDlls, getAllDlls } from '@/utils/dllCodeDefinitions';
-import { allExecutableCodes } from '@/utils/executableCodeDefinitions';
+import { allExecutableCodes } from '@/utils/executableCode'; // Updated import
 import { SetupFile } from '@/utils/setupTypes';
 import {
   Dialog,
