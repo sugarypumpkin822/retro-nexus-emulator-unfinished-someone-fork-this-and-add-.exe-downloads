@@ -109,8 +109,10 @@ export const createExecutablePackage = async (): Promise<Blob> => {
     // Add advanced shader collection
     const shaderTypes = ['crt', 'scanline', 'hq2x', 'hq4x', '2xsai', 'super2xsai', 'supereagle', 'gameboy', 'nes', 'scummvm'];
     shaderTypes.forEach(shader => {
-      zip.file(`shaders/${shader}.glsl`, createSampleShaderFile(shader));
-      zip.file(`shaders/${shader}.hlsl`, createSampleShaderFile(`${shader}-dx`));
+      // Fixed: Remove shader argument as createSampleShaderFile expects no arguments
+      zip.file(`shaders/${shader}.glsl`, createSampleShaderFile());
+      // Fixed: Remove shader-dx argument
+      zip.file(`shaders/${shader}.hlsl`, createSampleShaderFile());
     });
     
     // Add controller mappings for popular controllers

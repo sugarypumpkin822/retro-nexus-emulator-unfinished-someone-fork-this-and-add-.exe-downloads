@@ -63,5 +63,14 @@ export const windowsRequirements: SystemRequirements = {
   graphics: "NVIDIA RTX 4060 8GB / AMD RX 7600 8GB or better",
   directX: "Version 12",
   storage: "50 GB available space",
-  additionalNotes: "SSD storage recommended for optimal performance."
+  additionalNotes: "SSD storage recommended for optimal performance.",
+  minCpuCores: 6,
+  minRamGB: 16
 };
+
+// Minimum and recommended disk space requirements (in GB)
+export const minimumDiskSpace = 50;
+export const recommendedDiskSpace = 100;
+
+// Supported operating systems
+export const supportedOperatingSystems = ['Windows 10', 'Windows 11'];

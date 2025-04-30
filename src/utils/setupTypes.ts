@@ -24,4 +24,38 @@ export interface SystemRequirements {
   directX: string;
   storage: string;
   additionalNotes: string;
+  minCpuCores: number;
+  minRamGB: number;
+}
+
+// Setup options interface
+export interface SetupOptions {
+  installLocation: string;
+  createDesktopShortcut: boolean;
+  createStartMenuShortcuts: boolean;
+  registerFileAssociations: boolean;
+  installOptionalComponents: boolean;
+  autoUpdateEnabled: boolean;
+}
+
+// Installation progress interface
+export interface InstallationProgress {
+  stage: string;
+  percent: number;
+  isComplete: boolean;
+  timeRemaining: number;
+}
+
+// System component interface
+export interface SystemComponent {
+  name: string;
+  details: string;
+  isCompatible: boolean;
+}
+
+// Setup requirement interface
+export interface SetupRequirement {
+  name: string;
+  required: boolean;
+  installed: boolean;
 }

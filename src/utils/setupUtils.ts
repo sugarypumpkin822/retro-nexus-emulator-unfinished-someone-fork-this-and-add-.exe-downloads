@@ -64,34 +64,66 @@ export const checkSystemCompatibility = (
   const issues: string[] = [];
   
   // Check OS compatibility
-  if (!supportedOperatingSystems.includes(systemInfo.os)) {
-    issues.push(`Operating System ${systemInfo.os} is not officially supported.`);
+  if (!supportedOperatingSystems.includes(systemInfo.operatingSystem.details)) {
+    issues.push(`Operating System ${systemInfo.operatingSystem.details} is not officially supported.`);
   }
   
   // Check CPU requirements
-  if (systemInfo.cpuCores < windowsRequirements.minCpuCores) {
-    issues.push(`CPU has only ${systemInfo.cpuCores} cores. Minimum required: ${windowsRequirements.minCpuCores}.`);
+  const cpuCores = getCpuCoreCount(systemInfo);
+  if (cpuCores < windowsRequirements.minCpuCores) {
+    issues.push(`CPU has only ${cpuCores} cores. Minimum required: ${windowsRequirements.minCpuCores}.`);
   }
   
   // Check RAM requirements
-  if (systemInfo.ramGB < windowsRequirements.minRamGB) {
-    issues.push(`System has only ${systemInfo.ramGB}GB RAM. Minimum required: ${windowsRequirements.minRamGB}GB.`);
+  const ramGB = getSystemRamGB(systemInfo);
+  if (ramGB < windowsRequirements.minRamGB) {
+    issues.push(`System has only ${ramGB}GB RAM. Minimum required: ${windowsRequirements.minRamGB}GB.`);
   }
   
   // Check GPU compatibility
-  if (!systemInfo.gpuCompatible) {
+  if (!isGpuCompatible(systemInfo)) {
     issues.push('GPU does not support required DirectX features.');
   }
   
   // Check disk space
-  if (systemInfo.diskSpaceGB < minimumDiskSpace) {
-    issues.push(`Insufficient disk space. Available: ${systemInfo.diskSpaceGB}GB, Required: ${minimumDiskSpace}GB.`);
+  const diskSpaceGB = getAvailableDiskSpace(systemInfo);
+  if (diskSpaceGB < minimumDiskSpace) {
+    issues.push(`Insufficient disk space. Available: ${diskSpaceGB}GB, Required: ${minimumDiskSpace}GB.`);
   }
   
   return {
     compatible: issues.length === 0,
     issues
   };
+};
+
+// Helper function to get CPU core count from system info
+const getCpuCoreCount = (systemInfo: SystemScanResults): number => {
+  // Extract core count from CPU details if available
+  const cpuDetails = systemInfo.cpu.details;
+  const coreMatch = cpuDetails.match(/(\d+)\s*cores?/i);
+  return coreMatch ? parseInt(coreMatch[1], 10) : 4; // Default to 4 if not specified
+};
+
+// Helper function to get RAM in GB
+const getSystemRamGB = (systemInfo: SystemScanResults): number => {
+  // Extract RAM amount from system info
+  const ramDetails = systemInfo.ram.details;
+  const gbMatch = ramDetails.match(/(\d+(?:\.\d+)?)\s*GB/i);
+  return gbMatch ? parseFloat(gbMatch[1]) : 8; // Default to 8 if not specified
+};
+
+// Helper function to check if GPU is compatible
+const isGpuCompatible = (systemInfo: SystemScanResults): boolean => {
+  return systemInfo.gpu.meetsMinimum;
+};
+
+// Helper function to get available disk space
+const getAvailableDiskSpace = (systemInfo: SystemScanResults): number => {
+  // Extract disk space info if available
+  const storageDetails = systemInfo.storage.details;
+  const gbMatch = storageDetails.match(/(\d+(?:\.\d+)?)\s*GB/i);
+  return gbMatch ? parseFloat(gbMatch[1]) : 50; // Default to 50 if not specified
 };
 
 // Track installation progress
